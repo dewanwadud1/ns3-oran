@@ -84,6 +84,39 @@ OranDataRepository::IsActive(void) const
     return m_active;
 }
 
+// New Methods for RSRP Reporting
+void
+OranDataRepository::SaveUeRsrp(uint64_t e2NodeId, uint16_t cellId, double rsrp, Time t)
+{
+    NS_LOG_FUNCTION(this << e2NodeId << cellId << rsrp << t);
+    if (m_active)
+    {
+        // Store the RSRP value for the UE at the specified time
+        m_rsrpTable[e2NodeId][t][cellId] = rsrp;
+    }
+}
+
+std::map<Time, std::map<uint16_t, double>>
+OranDataRepository::GetUeRsrp(uint64_t e2NodeId, Time fromTime, Time toTime)
+{
+    NS_LOG_FUNCTION(this << e2NodeId << fromTime << toTime);
+    std::map<Time, std::map<uint16_t, double>> result;
+
+    if (m_active)
+    {
+        auto ueIt = m_rsrpTable.find(e2NodeId);
+        if (ueIt != m_rsrpTable.end())
+        {
+            for (auto it = ueIt->second.lower_bound(fromTime); it != ueIt->second.end() && it->first <= toTime; ++it)
+            {
+                result[it->first] = it->second;
+            }
+        }
+    }
+
+    return result;
+}
+
 void
 OranDataRepository::DoDispose(void)
 {

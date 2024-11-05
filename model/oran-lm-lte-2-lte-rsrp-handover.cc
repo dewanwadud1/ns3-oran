@@ -1,34 +1,3 @@
-/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
-/**
- * NIST-developed software is provided by NIST as a public service. You may
- * use, copy and distribute copies of the software in any medium, provided that
- * you keep intact this entire notice. You may improve, modify and create
- * derivative works of the software or any portion of the software, and you may
- * copy and distribute such modifications or works. Modified works should carry
- * a notice stating that you changed the software and should note the date and
- * nature of any such change. Please explicitly acknowledge the National
- * Institute of Standards and Technology as the source of the software.
- *
- * NIST-developed software is expressly provided "AS IS." NIST MAKES NO
- * WARRANTY OF ANY KIND, EXPRESS, IMPLIED, IN FACT OR ARISING BY OPERATION OF
- * LAW, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTY OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT AND DATA ACCURACY. NIST
- * NEITHER REPRESENTS NOR WARRANTS THAT THE OPERATION OF THE SOFTWARE WILL BE
- * UNINTERRUPTED OR ERROR-FREE, OR THAT ANY DEFECTS WILL BE CORRECTED. NIST
- * DOES NOT WARRANT OR MAKE ANY REPRESENTATIONS REGARDING THE USE OF THE
- * SOFTWARE OR THE RESULTS THEREOF, INCLUDING BUT NOT LIMITED TO THE
- * CORRECTNESS, ACCURACY, RELIABILITY, OR USEFULNESS OF THE SOFTWARE.
- *
- * You are solely responsible for determining the appropriateness of using and
- * distributing the software and you assume all risks associated with its use,
- * including but not limited to the risks and costs of program errors,
- * compliance with applicable laws, damage to or loss of data, programs or
- * equipment, and the unavailability or interruption of operation. This
- * software is not intended to be used in any situation where a failure could
- * cause risk of injury or damage to property. The software developed by NIST
- * employees is not subject to copyright protection within the United States.
- */
-
 #include "oran-lm-lte-2-lte-rsrp-handover.h"
 
 #include "oran-command-lte-2-lte-handover.h"
@@ -37,6 +6,7 @@
 #include <ns3/abort.h>
 #include <ns3/log.h>
 #include <ns3/simulator.h>
+#include <ns3/double.h>
 #include <ns3/uinteger.h>
 
 #include <cfloat>
@@ -53,13 +23,24 @@ OranLmLte2LteRsrpHandover::GetTypeId(void)
 {
     static TypeId tid = TypeId("ns3::OranLmLte2LteRsrpHandover")
                             .SetParent<OranLm>()
-                            .AddConstructor<OranLmLte2LteRsrpHandover>();
-
+                            .AddConstructor<OranLmLte2LteRsrpHandover>()
+                            .AddAttribute("HysteresisMargin",
+                                          "The hysteresis margin in dB to avoid ping-pong handovers.",
+                                          DoubleValue(3.0),
+                                          MakeDoubleAccessor(&OranLmLte2LteRsrpHandover::m_hysteresisMargin),
+                                          MakeDoubleChecker<double>())
+                            .AddAttribute("TimeWindow",
+                                          "Time window in seconds to consider RSRP measurements.",
+                                          TimeValue(Seconds(1.0)),
+                                          MakeTimeAccessor(&OranLmLte2LteRsrpHandover::m_timeWindow),
+                                          MakeTimeChecker());
     return tid;
 }
 
 OranLmLte2LteRsrpHandover::OranLmLte2LteRsrpHandover(void)
-    : OranLm()
+    : OranLm(),
+      m_hysteresisMargin(3.0),
+      m_timeWindow(Seconds(1.0))
 {
     NS_LOG_FUNCTION(this);
 
@@ -108,21 +89,7 @@ OranLmLte2LteRsrpHandover::GetUeInfos(Ptr<OranDataRepository> data) const
         std::tie(found, ueInfo.cellId, ueInfo.rnti) = data->GetLteUeCellInfo(ueInfo.nodeId);
         if (found)
         {
-            // Get the latest location of the UE.
-            std::map<Time, Vector> nodePositions =
-                data->GetNodePositions(ueInfo.nodeId, Seconds(0), Simulator::Now());
-
-            if (!nodePositions.empty())
-            {
-                // We found both the cell and location informtaion for this UE
-                // so record it for a later analysis.
-                ueInfo.position = nodePositions.rbegin()->second;
-                ueInfos.push_back(ueInfo);
-            }
-            else
-            {
-                NS_LOG_INFO("Could not find LTE UE location for E2 Node ID = " << ueInfo.nodeId);
-            }
+            ueInfos.push_back(ueInfo);
         }
         else
         {
@@ -147,21 +114,7 @@ OranLmLte2LteRsrpHandover::GetEnbInfos(Ptr<OranDataRepository> data) const
         std::tie(found, enbInfo.cellId) = data->GetLteEnbCellInfo(enbInfo.nodeId);
         if (found)
         {
-            // Get all known locations of the eNB.
-            std::map<Time, Vector> nodePositions =
-                data->GetNodePositions(enbInfo.nodeId, Seconds(0), Simulator::Now());
-
-            if (!nodePositions.empty())
-            {
-                // We found both the cell and location information for this
-                // eNB so record it for a later analysis.
-                enbInfo.position = nodePositions.rbegin()->second;
-                enbInfos.push_back(enbInfo);
-            }
-            else
-            {
-                NS_LOG_INFO("Could not find LTE eNB location for E2 Node ID = " << enbInfo.nodeId);
-            }
+            enbInfos.push_back(enbInfo);
         }
         else
         {
@@ -181,73 +134,101 @@ OranLmLte2LteRsrpHandover::GetHandoverCommands(
 
     std::vector<Ptr<OranCommand>> commands;
 
-    // Compare the location of each active eNB with the location of each active
-    // UE and see if that UE is currently being served by the closet cell. If
-    // there is a closer eNB to the UE then the currently serving cell then
-    // issue a handover command.
+    // For each UE, analyze RSRP measurements.
     for (auto ueInfo : ueInfos)
     {
-        double min = DBL_MAX;               // The minimum distance recorded.
-        uint64_t oldCellNodeId;             // The ID of the cell currently serving the UE.
-        uint16_t newCellId = ueInfo.cellId; // The ID of the closest cell.
-        for (const auto& enbInfo : enbInfos)
+        // Retrieve RSRP measurements for this UE within the time window.
+        std::map<Time, std::map<uint16_t, double>> rsrpMeasurements =
+            data->GetUeRsrp(ueInfo.nodeId, Simulator::Now() - m_timeWindow, Simulator::Now());
+
+        if (rsrpMeasurements.empty())
         {
-            // Calculate the distance between the UE and eNB.
-            double dist = std::sqrt(std::pow(ueInfo.position.x - enbInfo.position.x, 2) +
-                                    std::pow(ueInfo.position.y - enbInfo.position.y, 2) +
-                                    std::pow(ueInfo.position.z - enbInfo.position.z, 2));
+            NS_LOG_INFO("No RSRP measurements found for UE E2 Node ID = " << ueInfo.nodeId);
+            continue;
+        }
 
-            LogLogicToRepository("Distance from UE with RNTI " + std::to_string(ueInfo.rnti) +
-                                 " in CellID " + std::to_string(ueInfo.cellId) +
-                                 " to eNB with CellID " + std::to_string(enbInfo.cellId) + " is " +
-                                 std::to_string(dist));
-
-            // Check if the distance is shorter than the current minimum
-            if (dist < min)
+        // Aggregate RSRP measurements to find average RSRP per cell.
+        std::map<uint16_t, std::vector<double>> cellRsrpValues;
+        for (const auto& timeEntry : rsrpMeasurements)
+        {
+            for (const auto& cellEntry : timeEntry.second)
             {
-                // Record the new minimum
-                min = dist;
-                // Record the ID of the cell that produced the new minimum.
-                newCellId = enbInfo.cellId;
-
-                LogLogicToRepository("Distance to eNB with CellID " +
-                                     std::to_string(enbInfo.cellId) + " is shortest so far");
-            }
-
-            // Check if this cell is the currently serving this UE.
-            if (ueInfo.cellId == enbInfo.cellId)
-            {
-                // It is, so indicate record the ID of the cell that is
-                // currently serving the UE.
-                oldCellNodeId = enbInfo.nodeId;
+                cellRsrpValues[cellEntry.first].push_back(cellEntry.second);
             }
         }
 
-        // Check if the ID of the closest cell is different from ID of the cell
-        // that is currently serving the UE
-        if (newCellId != ueInfo.cellId)
+        // Compute average RSRP per cell.
+        std::map<uint16_t, double> cellAvgRsrp;
+        for (const auto& cellEntry : cellRsrpValues)
         {
-            // It is, so issue a handover command.
+            double sum = 0.0;
+            for (double val : cellEntry.second)
+            {
+                sum += val;
+            }
+            cellAvgRsrp[cellEntry.first] = sum / cellEntry.second.size();
+        }
+
+        // Identify the cell with the highest average RSRP.
+        uint16_t bestCellId = ueInfo.cellId;
+        double bestRsrp = -DBL_MAX;
+
+        for (const auto& cellEntry : cellAvgRsrp)
+        {
+            NS_LOG_INFO("UE " << ueInfo.nodeId << " average RSRP from CellID "
+                              << cellEntry.first << " is " << cellEntry.second << " dBm");
+
+            if (cellEntry.second > bestRsrp)
+            {
+                bestRsrp = cellEntry.second;
+                bestCellId = cellEntry.first;
+            }
+        }
+
+        // Check if the best cell is different from the current serving cell and the RSRP difference exceeds hysteresis.
+        if (bestCellId != ueInfo.cellId &&
+            (bestRsrp - cellAvgRsrp[ueInfo.cellId] > m_hysteresisMargin))
+        {
+            // Find the nodeId of the best eNB.
+            uint64_t targetEnbNodeId = 0;
+            for (const auto& enbInfo : enbInfos)
+            {
+                if (enbInfo.cellId == bestCellId)
+                {
+                    targetEnbNodeId = enbInfo.nodeId;
+                    break;
+                }
+            }
+
+            if (targetEnbNodeId == 0)
+            {
+                NS_LOG_WARN("Could not find eNB with CellID = " << bestCellId);
+                continue;
+            }
+
+            // Issue handover command.
             Ptr<OranCommandLte2LteHandover> handoverCommand =
                 CreateObject<OranCommandLte2LteHandover>();
-            // Send the command to the cell currently serving the UE.
-            handoverCommand->SetAttribute("TargetE2NodeId", UintegerValue(oldCellNodeId));
+            // Send the command to the current serving eNB.
+            handoverCommand->SetAttribute("TargetE2NodeId", UintegerValue(ueInfo.nodeId));
             // Use the RNTI that the current cell is using to identify the UE.
             handoverCommand->SetAttribute("TargetRnti", UintegerValue(ueInfo.rnti));
             // Give the current cell the ID of the new cell to handover to.
-            handoverCommand->SetAttribute("TargetCellId", UintegerValue(newCellId));
+            handoverCommand->SetAttribute("TargetCellId", UintegerValue(bestCellId));
             // Log the command to the storage
             data->LogCommandLm(m_name, handoverCommand);
             // Add the command to send.
             commands.push_back(handoverCommand);
 
-            LogLogicToRepository("Closest eNB (CellID " + std::to_string(newCellId) + ")" +
-                                 " is different than the currently attached eNB" + " (CellID " +
-                                 std::to_string(ueInfo.cellId) + ")." +
-                                 " Issuing handover command.");
+            NS_LOG_INFO("Issuing handover command for UE " << ueInfo.nodeId
+                                                           << " from CellID " << ueInfo.cellId
+                                                           << " to CellID " << bestCellId
+                                                           << " due to better RSRP (" << bestRsrp
+                                                           << " dBm) exceeding hysteresis margin.");
         }
     }
     return commands;
 }
 
 } // namespace ns3
+

@@ -95,6 +95,10 @@ class OranDataRepositorySqlite : public OranDataRepository
     void SaveLteUeCellInfo(uint64_t e2NodeId, uint16_t cellId, uint16_t rnti, Time t) override;
     void SaveAppLoss(uint64_t e2NodeId, double appLoss, Time t) override;
 
+    // New methods for RSRP reporting
+    void SaveUeRsrp(uint64_t e2NodeId, uint16_t cellId, double rsrp, Time t) override;
+    std::map<Time, std::map<uint16_t, double>> GetUeRsrp(uint64_t e2NodeId, Time fromTime, Time toTime) override;
+
     std::map<Time, Vector> GetNodePositions(uint64_t e2NodeId,
                                             Time fromTime,
                                             Time toTime,
@@ -147,7 +151,9 @@ class OranDataRepositorySqlite : public OranDataRepository
         LOG_CMM_ACTION,                    //!< Log a CM module action
         LOG_E2TERMINATOR_COMMAND,          //!< Log an E2 terminator command from the RIC
         LOG_LM_ACTION,                     //!< Log an LM action
-        LOG_LM_COMMAND                     //!< Log an LM command
+        LOG_LM_COMMAND,                    //!< Log an LM command
+        INSERT_RSRP_REPORT,                //!< Add an RSRP report to the database
+        GET_RSRP_REPORT                    //!< Retrieve RSRP reports from the database
     };
 
     /**
@@ -177,11 +183,12 @@ class OranDataRepositorySqlite : public OranDataRepository
         TABLE_NODE_LOCATION,      //!< Table with Node Locations
         TABLE_NODE_REGISTRATION,  //!< Table with Node Registrations
         TABLE_TERMINATOR_COMMAND, //!< Table with logs of E2 Terminator Commands
-        TABLE_APPLOSS_COMMAND     //!< Table with logs of application loss Commands
+        TABLE_APPLOSS_COMMAND,    //!< Table with logs of application loss Commands
+        TABLE_RSRP_REPORT         //!< Table for storing RSRP reports
     };
 
     /**
-     * Checks that a query was executed successfully. This method checks the return codeof a query,
+     * Checks that a query was executed successfully. This method checks the return code of a query,
      * and if there was an error, the simulation is aborted.
      *
      * \param stmt The query that was executed.

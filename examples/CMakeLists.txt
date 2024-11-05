@@ -53,6 +53,16 @@ build_lib_example(
 )
 
 build_lib_example(
+  NAME oran-lte-2-lte-rsrp-handover-example
+  SOURCE_FILES oran-lte-2-lte-rsrp-handover-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+)
+
+build_lib_example(
   NAME oran-lte-2-lte-distance-handover-helper-example
   SOURCE_FILES oran-lte-2-lte-distance-handover-helper-example.cc
   LIBRARIES_TO_LINK

@@ -1,49 +1,28 @@
-/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
-/**
- * NIST-developed software is provided by NIST as a public service. You may
- * use, copy and distribute copies of the software in any medium, provided that
- * you keep intact this entire notice. You may improve, modify and create
- * derivative works of the software or any portion of the software, and you may
- * copy and distribute such modifications or works. Modified works should carry
- * a notice stating that you changed the software and should note the date and
- * nature of any such change. Please explicitly acknowledge the National
- * Institute of Standards and Technology as the source of the software.
- *
- * NIST-developed software is expressly provided "AS IS." NIST MAKES NO
- * WARRANTY OF ANY KIND, EXPRESS, IMPLIED, IN FACT OR ARISING BY OPERATION OF
- * LAW, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTY OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT AND DATA ACCURACY. NIST
- * NEITHER REPRESENTS NOR WARRANTS THAT THE OPERATION OF THE SOFTWARE WILL BE
- * UNINTERRUPTED OR ERROR-FREE, OR THAT ANY DEFECTS WILL BE CORRECTED. NIST
- * DOES NOT WARRANT OR MAKE ANY REPRESENTATIONS REGARDING THE USE OF THE
- * SOFTWARE OR THE RESULTS THEREOF, INCLUDING BUT NOT LIMITED TO THE
- * CORRECTNESS, ACCURACY, RELIABILITY, OR USEFULNESS OF THE SOFTWARE.
- *
- * You are solely responsible for determining the appropriateness of using and
- * distributing the software and you assume all risks associated with its use,
- * including but not limited to the risks and costs of program errors,
- * compliance with applicable laws, damage to or loss of data, programs or
- * equipment, and the unavailability or interruption of operation. This
- * software is not intended to be used in any situation where a failure could
- * cause risk of injury or damage to property. The software developed by NIST
- * employees is not subject to copyright protection within the United States.
- */
-
 #include <ns3/core-module.h>
 #include <ns3/internet-module.h>
 #include <ns3/lte-module.h>
 #include <ns3/mobility-module.h>
 #include <ns3/network-module.h>
 #include <ns3/oran-module.h>
+#include <ns3/oran-reporter-lte-ue-rsrp.h> // rsrp hadover reporter
 
 #include <stdio.h>
 
 using namespace ns3;
 
-NS_LOG_COMPONENT_DEFINE("OranLte2LteDistanceHandoverExample");
+NS_LOG_COMPONENT_DEFINE("OranLte2LteRsrpHandoverExample");
 
-
-// Tracing files
+/**
+ * Usage example of the ORAN models.
+ *
+ * The scenario consists of an LTE UE moving back and forth
+ * between  LTE eNBs. The LTE UE reports to the RIC its RSRP
+ * values and current Cell ID. In the RIC, an LM will periodically check
+ * the RSRP, and if needed, issue a handover command.
+ */
+ 
+ 
+ // Tracing files
 // Tracing rsrp, rsrq, and sinr
 void LogRsrpRsrqSinr(Ptr<OutputStreamWrapper> stream, uint16_t rnti, uint16_t cellId, double rsrp, double rsrq, uint8_t sinr) {
     *stream->GetStream() << Simulator::Now().GetSeconds() << "\tRNTI: " << rnti
@@ -52,60 +31,6 @@ void LogRsrpRsrqSinr(Ptr<OutputStreamWrapper> stream, uint16_t rnti, uint16_t ce
                          << "\tRSRQ: " << rsrq << " dB"
                          << "\tSINR: " << static_cast<int>(sinr) << " dB" << std::endl;
 }
- 
-// Tracing TxPower
-//void LogTxPower(std::string context, Ptr<LteEnbNetDevice> device) {
-//    double txPower = device->GetPhy()->GetTxPower();
-//    traceFile << Simulator::Now().GetSeconds() << "\t" << context << "\tTxPower: " << txPower << " dBm" << std::endl;
-//}
-
-/*
-void SetupTxPowerTraces(NodeContainer enbNodes, NetDeviceContainer enbLteDevs) {
-    for (uint32_t i = 0; i < enbNodes.GetN(); ++i) {
-        Ptr<NetDevice> dev = enbLteDevs.Get(i);
-        Ptr<LteEnbNetDevice> lteEnbDev = dev->GetObject<LteEnbNetDevice>();
-        std::string context = "eNB_" + std::to_string(i);
-        // Assume we have a way to trigger this callback at appropriate times
-        Simulator::Schedule(Seconds(1), &LogTxPower, context, lteEnbDev);
-    }
-}
-*/
- 
-// Callback function to log positions
-//void LogPosition(std::string context, Ptr<const MobilityModel> mobility) {
-//    Vector pos = mobility->GetPosition();
-//    traceFile << Simulator::Now().GetSeconds() << "\t" << context
-//              << "\t" << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
-//}
-
-/*
-
-// Setup function to attach the mobility trace sources
-//void SetupMobilityTraces(const NodeContainer& ueNodes, const NodeContainer& enbNodes) {
-    // Assuming 'ueNodes' and 'enbNodes' are your NodeContainers
-//    for (uint32_t i = 0; i < ueNodes.GetN(); ++i) {
-//        Ptr<MobilityModel> mob = ueNodes.Get(i)->GetObject<MobilityModel>();
-        std::string context = "UE_" + std::to_string(i);
-        mob->TraceConnect("CourseChange", context, MakeCallback(&LogPosition));
-    }
-    for (uint32_t i = 0; i < enbNodes.GetN(); ++i) {
-        Ptr<MobilityModel> mob = enbNodes.Get(i)->GetObject<MobilityModel>();
-        std::string context = "eNB_" + std::to_string(i);
-        mob->TraceConnect("CourseChange", context, MakeCallback(&LogPosition));
-    }
-}
-
-
-*/
-
-/**
- * Usage example of the ORAN models.
- *
- * The scenario consists of an LTE UE moving back and forth
- * between 2 LTE eNBs. The LTE UE reports to the RIC its location
- * and current Cell ID. In the RIC, an LM will periodically check
- * the position, and if needed, issue a handover command.
- */
 
 void
 NotifyHandoverEndOkEnb(std::string context, uint64_t imsi, uint16_t cellid, uint16_t rnti)
@@ -142,12 +67,12 @@ QueryRcSink(std::string query, std::string args, int rc)
 }
 
 /**
- * ORAN handover example. Based on the LTE module's "lena-x2-handover.cc".
+ * ORAN RSRP-based handover example. Based on the LTE module's "lena-x2-handover.cc".
  */
 int
 main(int argc, char* argv[])
 {
-    uint16_t numberOfUes = 1;
+    uint16_t numberOfUes = 4;
     uint16_t numberOfEnbs = 2;
     Time simTime = Seconds(50);
     double distance = 50;
@@ -232,7 +157,7 @@ main(int argc, char* argv[])
         std::remove(dbFileName.c_str());
     }
     Ptr<OranDataRepository> dataRepository = CreateObject<OranDataRepositorySqlite>();
-    Ptr<OranLm> defaultLm = CreateObject<OranLmLte2LteDistanceHandover>();
+    Ptr<OranLm> rsrpLm = CreateObject<OranLmLte2LteRsrpHandover>();
     Ptr<OranCmm> cmm = CreateObject<OranCmmNoop>();
     Ptr<OranNearRtRic> nearRtRic = CreateObject<OranNearRtRic>();
     Ptr<OranNearRtRicE2Terminator> nearRtRicE2Terminator =
@@ -244,9 +169,9 @@ main(int argc, char* argv[])
         dataRepository->TraceConnectWithoutContext("QueryRc", MakeCallback(&QueryRcSink));
     }
 
-    defaultLm->SetAttribute("Verbose", BooleanValue(true));
-    defaultLm->SetAttribute("NearRtRic", PointerValue(nearRtRic));
-    defaultLm->SetAttribute("ProcessingDelayRv",
+    rsrpLm->SetAttribute("Verbose", BooleanValue(true));
+    rsrpLm->SetAttribute("NearRtRic", PointerValue(nearRtRic));
+    rsrpLm->SetAttribute("ProcessingDelayRv",
                             StringValue("ns3::ConstantRandomVariable[Constant=0]"));
 
     cmm->SetAttribute("NearRtRic", PointerValue(nearRtRic));
@@ -257,7 +182,7 @@ main(int argc, char* argv[])
     nearRtRicE2Terminator->SetAttribute("TransmissionDelayRv",
                                         StringValue("ns3::ConstantRandomVariable[Constant=0.001]"));
 
-    nearRtRic->SetAttribute("DefaultLogicModule", PointerValue(defaultLm));
+    nearRtRic->SetAttribute("DefaultLogicModule", PointerValue(rsrpLm));
     nearRtRic->SetAttribute("E2Terminator", PointerValue(nearRtRicE2Terminator));
     nearRtRic->SetAttribute("DataRepository", PointerValue(dataRepository));
     nearRtRic->SetAttribute("LmQueryInterval", TimeValue(Seconds(5)));
@@ -273,13 +198,13 @@ main(int argc, char* argv[])
 
     for (uint32_t idx = 0; idx < ueNodes.GetN(); idx++)
     {
-        Ptr<OranReporterLocation> locationReporter = CreateObject<OranReporterLocation>();
+        Ptr<OranReporterLteUeRsrp> rsrpReporter = CreateObject<OranReporterLteUeRsrp>();
         Ptr<OranReporterLteUeCellInfo> lteUeCellInfoReporter =
             CreateObject<OranReporterLteUeCellInfo>();
         Ptr<OranE2NodeTerminatorLteUe> lteUeTerminator = CreateObject<OranE2NodeTerminatorLteUe>();
 
-        locationReporter->SetAttribute("Terminator", PointerValue(lteUeTerminator));
-        locationReporter->SetAttribute("Trigger", StringValue("ns3::OranReportTriggerPeriodic"));
+        rsrpReporter->SetAttribute("Terminator", PointerValue(lteUeTerminator));
+        rsrpReporter->SetAttribute("Trigger", StringValue("ns3::OranReportTriggerPeriodic"));
 
         lteUeCellInfoReporter->SetAttribute("Terminator", PointerValue(lteUeTerminator));
         lteUeCellInfoReporter->SetAttribute(
@@ -294,7 +219,7 @@ main(int argc, char* argv[])
         lteUeTerminator->SetAttribute("TransmissionDelayRv",
                                       StringValue("ns3::ConstantRandomVariable[Constant=0.001]"));
 
-        lteUeTerminator->AddReporter(locationReporter);
+        lteUeTerminator->AddReporter(rsrpReporter);
         lteUeTerminator->AddReporter(lteUeCellInfoReporter);
 
         lteUeTerminator->Attach(ueNodes.Get(idx));
@@ -345,3 +270,4 @@ main(int argc, char* argv[])
     Simulator::Destroy();
     return 0;
 }
+

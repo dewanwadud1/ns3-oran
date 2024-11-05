@@ -177,7 +177,13 @@ class OranDataRepository : public Object
      * \param t The time at which this cell information was reported by the node.
      */
     virtual void SaveAppLoss(uint64_t e2NodeId, double appLoss, Time t) = 0;
+     
+     
+    // New Methods for RSRP Reporting
+    virtual void SaveUeRsrp(uint64_t e2NodeId, uint16_t cellId, double rsrp, Time t) = 0;
+    virtual std::map<Time, std::map<uint16_t, double>> GetUeRsrp(uint64_t e2NodeId, Time fromTime, Time toTime) = 0;
 
+    
     /* Data Access API */
     /**
      * Get all the recoreded positions of a node between two times.
@@ -284,6 +290,9 @@ class OranDataRepository : public Object
      * Flag to keep track of the active status.
      */
     bool m_active;
+    
+    // Member variable to store RSRP values
+    std::map<uint64_t, std::map<Time, std::map<uint16_t, double>>> m_rsrpTable;
 }; // class OranDataRepository
 
 } // namespace ns3

@@ -118,6 +118,7 @@ build_lib(
     model/oran-lm-noop.cc
     model/oran-lm-lte-2-lte-distance-handover.cc
     model/oran-lm-lte-2-lte-rsrp-handover.cc
+    model/oran-lte-measurement.cc
     model/oran-cmm.cc
     model/oran-cmm-handover.cc
     model/oran-cmm-noop.cc
@@ -132,6 +133,7 @@ build_lib(
     model/oran-reporter-apploss.cc
     model/oran-reporter-location.cc
     model/oran-reporter-lte-ue-cell-info.cc
+    model/oran-reporter-lte-ue-rsrp.cc
     model/oran-data-repository.cc
     model/oran-data-repository-sqlite.cc
     model/oran-near-rt-ric-e2terminator.cc
@@ -156,6 +158,7 @@ build_lib(
     model/oran-lm-noop.h
     model/oran-lm-lte-2-lte-distance-handover.h
     model/oran-lm-lte-2-lte-rsrp-handover.h
+    model/oran-lte-measurement.h
     model/oran-cmm.h
     model/oran-cmm-handover.h
     model/oran-cmm-noop.h
@@ -170,6 +173,7 @@ build_lib(
     model/oran-reporter-apploss.h
     model/oran-reporter-location.h
     model/oran-reporter-lte-ue-cell-info.h
+    model/oran-reporter-lte-ue-rsrp.h
     model/oran-data-repository.h
     model/oran-data-repository-sqlite.h
     model/oran-near-rt-ric-e2terminator.h

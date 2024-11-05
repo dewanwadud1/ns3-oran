@@ -155,7 +155,7 @@ main(int argc, char* argv[])
     Time simTime = Seconds(200);
     Time maxWaitTime = Seconds(0.010); 
     std::string processingDelayRv = "ns3::NormalRandomVariable[Mean=0.005|Variance=0.000031]";
-    double distance = 50; // distance between eNBs
+    double distance = 200; // distance between eNBs
     Time interval = Seconds(15);
     double speed = 1.5; // speed of the ue
     bool dbLog = false;

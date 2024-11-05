@@ -371,6 +371,64 @@ OranDataRepositorySqlite::SaveAppLoss(uint64_t e2NodeId, double appLoss, Time t)
     }
 }
 
+void OranDataRepositorySqlite::SaveUeRsrp(uint64_t e2NodeId, uint16_t cellId, double rsrp, Time t)
+{
+    NS_LOG_FUNCTION(this << e2NodeId << cellId << rsrp << t);
+
+    if (m_active && IsNodeRegistered(e2NodeId))
+    {
+        int rc;
+        sqlite3_stmt* stmt = nullptr;
+
+        sqlite3_prepare_v2(m_db, m_queryStmtsStrings[INSERT_RSRP_REPORT].c_str(), -1, &stmt, 0);
+
+        sqlite3_bind_int64(stmt, 1, e2NodeId);
+        sqlite3_bind_int(stmt, 2, cellId);
+        sqlite3_bind_double(stmt, 3, rsrp);
+        sqlite3_bind_int64(stmt, 4, t.GetTimeStep());
+
+        rc = sqlite3_step(stmt);
+        CheckQueryReturnCode(stmt, rc, FormatBoundArgsList(e2NodeId, cellId, rsrp, t.GetTimeStep()));
+        sqlite3_finalize(stmt);
+    }
+}
+
+std::map<Time, std::map<uint16_t, double>> OranDataRepositorySqlite::GetUeRsrp(
+    uint64_t e2NodeId, Time fromTime, Time toTime)
+{
+    NS_LOG_FUNCTION(this << e2NodeId << fromTime << toTime);
+
+    std::map<Time, std::map<uint16_t, double>> rsrpData;
+
+    if (m_active && IsNodeRegistered(e2NodeId))
+    {
+        int rc;
+        sqlite3_stmt* stmt = nullptr;
+
+        sqlite3_prepare_v2(m_db, m_queryStmtsStrings[GET_RSRP_REPORT].c_str(), -1, &stmt, 0);
+
+        sqlite3_bind_int64(stmt, 1, e2NodeId);
+        sqlite3_bind_int64(stmt, 2, fromTime.GetTimeStep());
+        sqlite3_bind_int64(stmt, 3, toTime.GetTimeStep());
+
+        while ((rc = sqlite3_step(stmt)) == SQLITE_ROW)
+        {
+            uint64_t timeStep = sqlite3_column_int64(stmt, 0);
+            uint16_t cellId = sqlite3_column_int(stmt, 1);
+            double rsrp = sqlite3_column_double(stmt, 2);
+
+            Time t = Time(timeStep);
+            rsrpData[t][cellId] = rsrp;
+        }
+
+        CheckQueryReturnCode(stmt, rc, FormatBoundArgsList(e2NodeId, fromTime.GetTimeStep(), toTime.GetTimeStep()));
+        sqlite3_finalize(stmt);
+    }
+
+    return rsrpData;
+}
+
+
 std::map<Time, Vector>
 OranDataRepositorySqlite::GetNodePositions(uint64_t e2NodeId,
                                            Time fromTime,
@@ -889,6 +947,10 @@ OranDataRepositorySqlite::InitDb(void)
     RunCreateStatement(m_createStmtsStrings[INDEX_LTE_UE_CELL_CELLID]);
 
     RunCreateStatement(m_createStmtsStrings[TABLE_APPLOSS_COMMAND]);
+    
+    // RSRP Reporting Table
+    RunCreateStatement(m_createStmtsStrings[TABLE_RSRP_REPORT]);
+
 
     // E2 Terminator Commands
     RunCreateStatement(m_createStmtsStrings[TABLE_TERMINATOR_COMMAND]);
@@ -1016,6 +1078,28 @@ OranDataRepositorySqlite::InitStatements(void)
         "loss           REAL                              NOT NULL, "
         "simulationtime INTEGER                           NOT NULL, "
         "FOREIGN KEY(nodeid) REFERENCES node(nodeid)              );";
+        
+    // RSRP Reporting
+    m_createStmtsStrings[TABLE_RSRP_REPORT] = 
+       "CREATE TABLE IF NOT EXISTS rsrpreport ("
+       "entryid        INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+       "nodeid         INTEGER                           NOT NULL, "
+       "cellid         INTEGER                           NOT NULL, "
+       "rsrp           REAL                              NOT NULL, "
+       "simulationtime INTEGER                           NOT NULL, "
+       "FOREIGN KEY(nodeid) REFERENCES node(nodeid), "
+       "FOREIGN KEY(cellid) REFERENCES lteenb(cellid));";
+
+    m_queryStmtsStrings[INSERT_RSRP_REPORT] = 
+       "INSERT INTO rsrpreport "
+       "(nodeid, cellid, rsrp, simulationtime) VALUES (?, ?, ?, ?);";
+
+    m_queryStmtsStrings[GET_RSRP_REPORT] = 
+       "SELECT simulationtime, cellid, rsrp "
+       "FROM rsrpreport "
+       "WHERE nodeid = ? AND simulationtime >= ? AND simulationtime <= ? "
+       "ORDER BY simulationtime DESC;";
+
 
     // Query Statements
     m_queryStmtsStrings[CHECK_NODE_REGISTERED] = "SELECT registered "

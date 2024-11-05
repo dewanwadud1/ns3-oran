@@ -1,0 +1,92 @@
+#include <ns3/core-module.h>
+#include <ns3/internet-module.h>
+#include <ns3/lte-module.h>
+#include <ns3/mobility-module.h>
+#include <ns3/network-module.h>
+#include <ns3/oran-module.h>
+#include <ns3/config-store.h>
+#include "ns3/udp-server.h"
+#include "ns3/udp-client.h"
+#include "ns3/applications-module.h"
+
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <stdio.h>
+
+using namespace ns3;
+
+NS_LOG_COMPONENT_DEFINE("OranLteMeasurement");
+
+int main(int argc, char *argv[])
+{
+    Ptr<OranLteMeasurement> measurementModule = CreateObject<OranLteMeasurement>();
+    
+    // Configure your LTE devices
+    Ptr<LteHelper> lteHelper = CreateObject<LteHelper>();
+    Ptr<PointToPointEpcHelper> epcHelper = CreateObject<PointToPointEpcHelper>();
+    lteHelper->SetEpcHelper(epcHelper);
+    lteHelper->SetSchedulerType("ns3::RrFfMacScheduler");
+
+    // Creating RAN nodes
+    NodeContainer enbNodes;
+    enbNodes.Create(1);
+    NodeContainer ueNodes;
+    ueNodes.Create(5);
+
+    // Installing lte devices to ues and eNBs
+    NetDeviceContainer enbLteDevs = lteHelper->InstallEnbDevice(enbNodes);
+    NetDeviceContainer ueLteDevs = lteHelper->InstallUeDevice(ueNodes);
+    
+    
+    // Setting up mobility for the ues
+    MobilityHelper mobility;
+    mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
+    mobility.Install(enbNodes);
+
+    mobility.SetPositionAllocator("ns3::RandomDiscPositionAllocator",
+                              "X", StringValue("100.0"),
+                              "Y", StringValue("100.0"),
+                              "Rho", StringValue("ns3::UniformRandomVariable[Min=0|Max=30]"));
+    mobility.SetMobilityModel("ns3::RandomWalk2dMobilityModel",
+                          "Bounds", RectangleValue(Rectangle(70, 130, 70, 130)));
+    mobility.Install(ueNodes);
+
+    // Installing internet stack on the nodes
+    InternetStackHelper internet;
+    internet.Install(ueNodes);
+    Ipv4InterfaceContainer ueIpIface;
+    ueIpIface = epcHelper->AssignUeIpv4Address(NetDeviceContainer(ueLteDevs));
+    
+    // Application: setting up udp for downlink and tcp for uplink
+    // Install and start applications on UEs and remote host
+    uint16_t dlPort = 1234;
+    UdpServerHelper dlServer(dlPort);
+    ApplicationContainer serverApps = dlServer.Install(ueNodes.Get(0));
+    serverApps.Start(Seconds(0.1));
+    serverApps.Stop(Seconds(75.0));
+
+    UdpClientHelper dlClient(ueIpIface.GetAddress(0), dlPort);
+    dlClient.SetAttribute("Interval", TimeValue(MilliSeconds(50)));
+    dlClient.SetAttribute("MaxPackets", UintegerValue(1000));
+
+    ApplicationContainer clientApps = dlClient.Install(enbNodes.Get(0));
+    clientApps.Start(Seconds(1.0));
+    clientApps.Stop(Seconds(75.0));
+    
+    // Attaching ues to the enb
+    for (uint16_t i = 0; i < 5; i++)
+    {
+        lteHelper->Attach(ueLteDevs.Get(i), enbLteDevs.Get(0));
+    }
+
+    // Measuring parameters
+    measurementModule->Setup(ueLteDevs.Get(0), enbLteDevs.Get(0));
+    measurementModule->GetMeasurements();
+
+    Simulator::Stop(Seconds(75.0));
+    Simulator::Run();
+    Simulator::Destroy();
+    return 0;
+}
+
