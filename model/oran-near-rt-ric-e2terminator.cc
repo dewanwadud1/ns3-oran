@@ -37,10 +37,11 @@
 #include "oran-e2-node-terminator-lte-ue.h"
 #include "oran-e2-node-terminator.h"
 #include "oran-near-rt-ric.h"
+#include "oran-report.h"
 #include "oran-report-apploss.h"
 #include "oran-report-location.h"
 #include "oran-report-lte-ue-cell-info.h"
-#include "oran-report.h"
+#include "oran-report-lte-ue-rsrp-rsrq.h"
 
 #include <ns3/abort.h>
 #include <ns3/log.h>
@@ -59,7 +60,7 @@ NS_LOG_COMPONENT_DEFINE("OranNearRtRicE2Terminator");
 NS_OBJECT_ENSURE_REGISTERED(OranNearRtRicE2Terminator);
 
 TypeId
-OranNearRtRicE2Terminator::GetTypeId(void)
+OranNearRtRicE2Terminator::GetTypeId()
 {
     static TypeId tid =
         TypeId("ns3::OranNearRtRicE2Terminator")
@@ -85,7 +86,7 @@ OranNearRtRicE2Terminator::GetTypeId(void)
     return tid;
 }
 
-OranNearRtRicE2Terminator::OranNearRtRicE2Terminator(void)
+OranNearRtRicE2Terminator::OranNearRtRicE2Terminator()
     : Object(),
       m_active(false),
       m_nodeTerminators(std::map<uint64_t, Ptr<OranE2NodeTerminator>>())
@@ -93,13 +94,13 @@ OranNearRtRicE2Terminator::OranNearRtRicE2Terminator(void)
     NS_LOG_FUNCTION(this);
 }
 
-OranNearRtRicE2Terminator::~OranNearRtRicE2Terminator(void)
+OranNearRtRicE2Terminator::~OranNearRtRicE2Terminator()
 {
     NS_LOG_FUNCTION(this);
 }
 
 void
-OranNearRtRicE2Terminator::Activate(void)
+OranNearRtRicE2Terminator::Activate()
 {
     NS_LOG_FUNCTION(this);
 
@@ -107,7 +108,7 @@ OranNearRtRicE2Terminator::Activate(void)
 }
 
 void
-OranNearRtRicE2Terminator::Deactivate(void)
+OranNearRtRicE2Terminator::Deactivate()
 {
     NS_LOG_FUNCTION(this);
 
@@ -115,7 +116,7 @@ OranNearRtRicE2Terminator::Deactivate(void)
 }
 
 bool
-OranNearRtRicE2Terminator::IsActive(void) const
+OranNearRtRicE2Terminator::IsActive() const
 {
     NS_LOG_FUNCTION(this);
 
@@ -219,6 +220,18 @@ OranNearRtRicE2Terminator::ReceiveReport(Ptr<OranReport> report)
                                 appLossRpt->GetLoss(),
                                 appLossRpt->GetTime());
         }
+        else if (report->GetInstanceTypeId() == TypeId::LookupByName("ns3::OranReportLteUeRsrpRsrq"))
+        {
+            Ptr<OranReportLteUeRsrpRsrq> rsrpRsrqRpt = report->GetObject<OranReportLteUeRsrpRsrq>();
+            m_data->SaveLteUeRsrpRsrq(rsrpRsrqRpt->GetReporterE2NodeId(),
+                                rsrpRsrqRpt->GetTime(),
+                                rsrpRsrqRpt->GetRnti(),
+                                rsrpRsrqRpt->GetCellId(),
+                                rsrpRsrqRpt->GetRsrp(),
+                                rsrpRsrqRpt->GetRsrq(),
+                                rsrpRsrqRpt->GetIsServingCell(),
+                                rsrpRsrqRpt->GetComponentCarrierId());
+        }
 
         m_nearRtRic->NotifyReportReceived(report);
     }
@@ -259,7 +272,7 @@ OranNearRtRicE2Terminator::ProcessCommands(std::vector<Ptr<OranCommand>> command
 }
 
 void
-OranNearRtRicE2Terminator::DoDispose(void)
+OranNearRtRicE2Terminator::DoDispose()
 {
     NS_LOG_FUNCTION(this);
 

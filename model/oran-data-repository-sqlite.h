@@ -64,25 +64,25 @@ class OranDataRepositorySqlite : public OranDataRepository
      *
      * \return The TypeId.
      */
-    static TypeId GetTypeId(void);
+    static TypeId GetTypeId();
     /**
      * Creates an instance of the OranDataRepositorySqlite class.
      */
-    OranDataRepositorySqlite(void);
+    OranDataRepositorySqlite();
     /**
      * The destructor of the OranDataRepositorySqlite class.
      */
-    ~OranDataRepositorySqlite(void) override;
+    ~OranDataRepositorySqlite() override;
     /**
      * Activate the data storage. If the database is not open,
      * this method will call OpenDb.
      */
-    void Activate(void) override;
+    void Activate() override;
     /**
      * Deactivate the data storage. If the database is open,
      * this method will call CloseDb.
      */
-    void Deactivate(void) override;
+    void Deactivate() override;
 
     /* Data Storage API */
     bool IsNodeRegistered(uint64_t e2NodeId) override;
@@ -94,18 +94,27 @@ class OranDataRepositorySqlite : public OranDataRepository
     void SavePosition(uint64_t e2NodeId, Vector pos, Time t) override;
     void SaveLteUeCellInfo(uint64_t e2NodeId, uint16_t cellId, uint16_t rnti, Time t) override;
     void SaveAppLoss(uint64_t e2NodeId, double appLoss, Time t) override;
+    void SaveLteUeRsrpRsrq(uint64_t e2NodeId,
+                      Time t,
+                      uint16_t rnti,
+                      uint16_t cellId,
+                      double rsrp,
+                      double rsrq,
+                      bool isServingCell,
+                      uint8_t componentCarrierId) override;
 
     std::map<Time, Vector> GetNodePositions(uint64_t e2NodeId,
                                             Time fromTime,
                                             Time toTime,
                                             uint64_t maxEntries = 1) override;
     std::tuple<bool, uint16_t, uint16_t> GetLteUeCellInfo(uint64_t e2NodeId) override;
-    std::vector<uint64_t> GetLteUeE2NodeIds(void) override;
+    std::vector<uint64_t> GetLteUeE2NodeIds() override;
     uint64_t GetLteUeE2NodeIdFromCellInfo(uint16_t cellId, uint16_t rnti) override;
     std::tuple<bool, uint16_t> GetLteEnbCellInfo(uint64_t e2NodeId) override;
-    std::vector<uint64_t> GetLteEnbE2NodeIds(void) override;
-    std::vector<std::tuple<uint64_t, Time>> GetLastRegistrationRequests(void) override;
+    std::vector<uint64_t> GetLteEnbE2NodeIds() override;
+    std::vector<std::tuple<uint64_t, Time>> GetLastRegistrationRequests() override;
     double GetAppLoss(uint64_t e2NodeId) override;
+    std::vector<std::tuple<uint16_t, uint16_t, double, double, bool, uint8_t>> GetLteUeRsrpRsrq(uint64_t e2NodeId) override;
 
     void LogCommandE2Terminator(Ptr<OranCommand> cmd) override;
     void LogCommandLm(std::string lm, Ptr<OranCommand> cmd) override;
@@ -136,6 +145,7 @@ class OranDataRepositorySqlite : public OranDataRepository
         GET_LTE_CELLID_FROM_E2NODEID,      //!< Get the cell ID of an LTE eNB from its E2 Node ID
         GET_LTE_UE_CELLINFO,               //!< Get the cell information associated with LTE UE
         GET_LTE_UE_E2NODEID_FROM_CELLINFO, //!< Get the E2 ID of a UE from the cell information
+        GET_LTE_UE_RSRP_RSRQ,              //!< Get the UE RSRP and RSRQ measurements
         GET_NODE_ALL_POSITIONS,            //!< The location of all nodes E2 nodes
         INSERT_LTE_ENB_NODE,               //!< Add an LTE eNB E2 node
         INSERT_LTE_UE_CELL,                //!< Add LTE UE cell information for an E2 node
@@ -144,6 +154,7 @@ class OranDataRepositorySqlite : public OranDataRepository
         INSERT_NODE_UPDATE,                //!< Update an E2 node's information
         INSERT_NODE_LOCATION,              //!< Add an E2 node's location
         INSERT_NODE_REGISTRATION,          //!< Add an E2 node registration request
+        INSERT_LTE_UE_RSRP_RSRQ,           //!< Add LTE UE RSRP and RSRQ
         LOG_CMM_ACTION,                    //!< Log a CM module action
         LOG_E2TERMINATOR_COMMAND,          //!< Log an E2 terminator command from the RIC
         LOG_LM_ACTION,                     //!< Log an LM action
@@ -173,6 +184,7 @@ class OranDataRepositorySqlite : public OranDataRepository
         TABLE_LTE_ENB,            //!< Table with LTE eNB information
         TABLE_LTE_UE,             //!< Table with LTE UE information
         TABLE_LTE_UE_CELL,        //!< Table with LTE UE Cell Information
+        TABLE_LTE_UE_RSRP_RSRQ,   //!< Table with LTE UE RSRP and RSRQ Information
         TABLE_NODE,               //!< Table with E2 Node Information
         TABLE_NODE_LOCATION,      //!< Table with Node Locations
         TABLE_NODE_REGISTRATION,  //!< Table with Node Registrations
@@ -228,20 +240,20 @@ class OranDataRepositorySqlite : public OranDataRepository
     /**
      * Closes the connection to the database.
      */
-    virtual void CloseDb(void);
+    virtual void CloseDb();
 
-    void DoDispose(void) override;
+    void DoDispose() override;
     /**
      * Indicates if the database connection has been established.
      *
      * \return True, if the database connection is open; otherwise, false.
      */
-    virtual bool IsDbOpen(void) const;
+    virtual bool IsDbOpen() const;
     /**
      * Opens the database file stores the handler. This method
      * calls InitDb to ensure that the required tables and indexes are available.
      */
-    virtual void OpenDb(void);
+    virtual void OpenDb();
     /**
      * Used to report the return code of SQL queries.
      */
@@ -253,12 +265,12 @@ class OranDataRepositorySqlite : public OranDataRepository
      * If the schema already exists, no change is made, allowing for reusing existing
      * database files and extending databases created with previous simulations.
      */
-    void InitDb(void);
+    void InitDb();
 
     /**
      * Initialize the maps with the prepared statements' strings
      */
-    void InitStatements(void);
+    void InitStatements();
 
     /**
      * The database.
