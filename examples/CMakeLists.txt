@@ -119,4 +119,13 @@ build_lib_example(
     ${liblte}
     ${libmobility}
 )
+build_lib_example(
+  NAME oran-lte-2-lte-four-xapp
+  SOURCE_FILES oran-lte-2-lte-four-xapp.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+)
 
