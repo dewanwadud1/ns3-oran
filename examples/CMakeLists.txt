@@ -129,3 +129,29 @@ build_lib_example(
     ${libmobility}
 )
 
+
+build_lib_example(
+  NAME oran-direct-conflict-evaluation
+  SOURCE_FILES oran-direct-conflict-evaluation.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+)
+
+build_lib_example(
+  NAME vtm-conflict-evaluation
+  SOURCE_FILES vtm-conflict-evaluation.cc
+  LIBRARIES_TO_LINK
+    ${libwifi}
+    ${libenergy}
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+)
+
+
+
+

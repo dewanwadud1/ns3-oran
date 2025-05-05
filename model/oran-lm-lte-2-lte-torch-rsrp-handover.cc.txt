@@ -1,0 +1,180 @@
+#include "oran-lm-lte-2-lte-torch-rsrp-handover.h"
+#include "oran-command-lte-2-lte-handover.h"
+#include "oran-data-repository.h"
+#include <ns3/log.h>
+#include <ns3/simulator.h>
+#include <ns3/string.h>
+#include <ns3/uinteger.h>
+#include <fstream>
+
+namespace ns3
+{
+
+NS_LOG_COMPONENT_DEFINE("OranLmLte2LteTorchRsrpHandover");
+NS_OBJECT_ENSURE_REGISTERED(OranLmLte2LteTorchRsrpHandover);
+
+TypeId
+OranLmLte2LteTorchRsrpHandover::GetTypeId(void)
+{
+    static TypeId tid =
+        TypeId("ns3::OranLmLte2LteTorchRsrpHandover")
+            .SetParent<OranLm>()
+            .AddConstructor<OranLmLte2LteTorchRsrpHandover>()
+            .AddAttribute("TorchModelPath",
+                          "The file path of the ML model.",
+                          StringValue("saved_trained_rsrp_model.pt"),
+                          MakeStringAccessor(&OranLmLte2LteTorchRsrpHandover::SetTorchModelPath),
+                          MakeStringChecker());
+
+    return tid;
+}
+
+OranLmLte2LteTorchRsrpHandover::OranLmLte2LteTorchRsrpHandover(void)
+{
+    NS_LOG_FUNCTION(this);
+    m_name = "OranLmLte2LteTorchRsrpHandover";
+}
+
+OranLmLte2LteTorchRsrpHandover::~OranLmLte2LteTorchRsrpHandover(void)
+{
+    NS_LOG_FUNCTION(this);
+}
+
+std::vector<Ptr<OranCommand>>
+OranLmLte2LteTorchRsrpHandover::Run(void)
+{
+    NS_LOG_FUNCTION(this);
+
+    std::vector<Ptr<OranCommand>> commands;
+
+    if (m_active)
+    {
+        NS_ABORT_MSG_IF(m_nearRtRic == nullptr,
+                        "Attempting to run LM (" + m_name + ") with NULL Near-RT RIC");
+
+        Ptr<OranDataRepository> data = m_nearRtRic->Data();
+        std::vector<UeInfo> ueInfos = GetUeInfos(data);
+        std::vector<EnbInfo> enbInfos = GetEnbInfos(data);
+        commands = GetHandoverCommands(data, ueInfos, enbInfos);
+    }
+
+    return commands;
+}
+
+void
+OranLmLte2LteTorchRsrpHandover::SetTorchModelPath(const std::string& torchModelPath)
+{
+    std::ifstream f(torchModelPath.c_str());
+    NS_ABORT_MSG_IF(!f.good(),
+                    "Torch model file \"" << torchModelPath << "\" not found.");
+    f.close();
+
+    try
+    {
+        m_model = torch::jit::load(torchModelPath);
+    }
+    catch (const c10::Error& e)
+    {
+        NS_ABORT_MSG("Could not load trained ML model.");
+    }
+}
+
+std::vector<OranLmLte2LteTorchRsrpHandover::UeInfo>
+OranLmLte2LteTorchRsrpHandover::GetUeInfos(Ptr<OranDataRepository> data) const
+{
+    NS_LOG_FUNCTION(this << data);
+
+    std::vector<UeInfo> ueInfos;
+    for (const auto ueId : data->GetLteUeE2NodeIds())
+    {
+        UeInfo ueInfo;
+        ueInfo.nodeId = ueId;
+        bool found;
+        std::tie(found, ueInfo.cellId, ueInfo.rnti) = data->GetLteUeCellInfo(ueInfo.nodeId);
+        if (found)
+        {
+            std::map<Time, Vector> nodePositions =
+                data->GetNodePositions(ueInfo.nodeId, Seconds(0), Simulator::Now());
+            if (!nodePositions.empty())
+            {
+                ueInfo.position = nodePositions.rbegin()->second;
+                auto rsrpRsrq = data->GetLteUeRsrpRsrq(ueInfo.nodeId);
+                if (!rsrpRsrq.empty())
+                {
+                    ueInfo.rsrp = std::get<2>(rsrpRsrq[0]); // RSRP
+                    ueInfo.rsrq = std::get<3>(rsrpRsrq[0]); // RSRQ
+                    ueInfo.cqi = data->GetLteUeCqi(ueInfo.nodeId); // CQI
+                    ueInfos.push_back(ueInfo);
+                }
+            }
+        }
+    }
+    return ueInfos;
+}
+
+std::vector<OranLmLte2LteTorchRsrpHandover::EnbInfo>
+OranLmLte2LteTorchRsrpHandover::GetEnbInfos(Ptr<OranDataRepository> data) const
+{
+    NS_LOG_FUNCTION(this << data);
+
+    std::vector<EnbInfo> enbInfos;
+    for (const auto enbId : data->GetLteEnbE2NodeIds())
+    {
+        EnbInfo enbInfo;
+        enbInfo.nodeId = enbId;
+        bool found;
+        std::tie(found, enbInfo.cellId) = data->GetLteEnbCellInfo(enbInfo.nodeId);
+        if (found)
+        {
+            std::map<Time, Vector> nodePositions =
+                data->GetNodePositions(enbInfo.nodeId, Seconds(0), Simulator::Now());
+            if (!nodePositions.empty())
+            {
+                enbInfo.position = nodePositions.rbegin()->second;
+                enbInfos.push_back(enbInfo);
+            }
+        }
+    }
+    return enbInfos;
+}
+
+std::vector<Ptr<OranCommand>>
+OranLmLte2LteTorchRsrpHandover::GetHandoverCommands(
+    Ptr<OranDataRepository> data,
+    const std::vector<UeInfo>& ueInfos,
+    const std::vector<EnbInfo>& enbInfos)
+{
+    NS_LOG_FUNCTION(this << data);
+
+    std::vector<Ptr<OranCommand>> commands;
+
+    for (const auto& ueInfo : ueInfos)
+    {
+        // Prepare input tensor for the PyTorch model
+        std::vector<float> input = {ueInfo.rsrp, ueInfo.rsrq, ueInfo.cqi};
+        std::vector<torch::jit::IValue> inputs;
+        inputs.push_back(torch::from_blob(input.data(), {1, 3}).to(torch::kFloat32));
+
+        // Get the model's prediction
+        at::Tensor output = torch::softmax(m_model.forward(inputs).toTensor(), 1);
+        int targetCellId = output.argmax(1).item().toInt() + 1; // Map output to cell ID
+
+        // Issue handover command if necessary
+        if (targetCellId != ueInfo.cellId)
+        {
+            Ptr<OranCommandLte2LteHandover> handoverCommand =
+                CreateObject<OranCommandLte2LteHandover>();
+            handoverCommand->SetAttribute("TargetE2NodeId", UintegerValue(enbInfos[targetCellId - 1].nodeId));
+            handoverCommand->SetAttribute("TargetRnti", UintegerValue(ueInfo.rnti));
+            handoverCommand->SetAttribute("TargetCellId", UintegerValue(targetCellId));
+            data->LogCommandLm(m_name, handoverCommand);
+            commands.push_back(handoverCommand);
+
+            NS_LOG_INFO("Handover UE " << ueInfo.nodeId << " to Cell ID " << targetCellId);
+        }
+    }
+
+    return commands;
+}
+
+} // namespace ns3

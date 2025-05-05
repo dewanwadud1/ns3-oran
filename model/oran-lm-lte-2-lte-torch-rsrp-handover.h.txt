@@ -1,0 +1,62 @@
+#ifndef ORAN_LM_LTE_2_LTE_TORCH_RSRP_HANDOVER_H
+#define ORAN_LM_LTE_2_LTE_TORCH_RSRP_HANDOVER_H
+
+#include "oran-data-repository.h"
+#include "oran-lm.h"
+
+#include <ns3/vector.h>
+
+#include <torch/script.h>
+#include <vector>
+
+namespace ns3
+{
+
+class OranLmLte2LteTorchRsrpHandover : public OranLm
+{
+  protected:
+    /**
+     * UE related information.
+     */
+    struct UeInfo
+    {
+        uint64_t nodeId; //!< The node ID.
+        uint16_t cellId; //!< The cell ID.
+        uint16_t rnti;   //!< The RNTI ID.
+        double rsrp;     //!< The RSRP value.
+        double rsrq;     //!< The RSRQ value.
+        double cqi;      //!< The CQI value.
+        Vector position; //!< The physical position.
+    };
+
+    /**
+     * eNB related information.
+     */
+    struct EnbInfo
+    {
+        uint64_t nodeId; //!< The node ID.
+        uint16_t cellId; //!< The cell ID.
+        Vector position; //!< The physical position.
+    };
+
+  public:
+    static TypeId GetTypeId(void);
+    OranLmLte2LteTorchRsrpHandover(void);
+    ~OranLmLte2LteTorchRsrpHandover(void) override;
+    std::vector<Ptr<OranCommand>> Run(void) override;
+    void SetTorchModelPath(const std::string& torchModelPath);
+
+  private:
+    torch::jit::script::Module m_model;
+
+    std::vector<UeInfo> GetUeInfos(Ptr<OranDataRepository> data) const;
+    std::vector<EnbInfo> GetEnbInfos(Ptr<OranDataRepository> data) const;
+    std::vector<Ptr<OranCommand>> GetHandoverCommands(
+        Ptr<OranDataRepository> data,
+        const std::vector<UeInfo>& ueInfos,
+        const std::vector<EnbInfo>& enbInfos);
+};
+
+} // namespace ns3
+
+#endif // ORAN_LM_LTE_2_LTE_TORCH_RSRP_HANDOVER_H
