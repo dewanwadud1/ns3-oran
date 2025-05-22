@@ -42,6 +42,7 @@
 #include "oran-report-location.h"
 #include "oran-report-lte-ue-cell-info.h"
 #include "oran-report-lte-ue-rsrp-rsrq.h"
+#include "oran-report-lte-energy-efficiency.h"
 
 #include <ns3/abort.h>
 #include <ns3/log.h>
@@ -231,6 +232,14 @@ OranNearRtRicE2Terminator::ReceiveReport(Ptr<OranReport> report)
                                 rsrpRsrqRpt->GetRsrq(),
                                 rsrpRsrqRpt->GetIsServingCell(),
                                 rsrpRsrqRpt->GetComponentCarrierId());
+        }
+    
+    else if (report->GetInstanceTypeId() == TypeId::LookupByName("ns3::OranReportLteEnergyEfficiency"))
+        {
+            Ptr<OranReportLteEnergyEfficiency> eeRpt = report->GetObject<OranReportLteEnergyEfficiency>();
+            m_data->SaveLteEnergyEfficiency(eeRpt->GetReporterE2NodeId(),
+                                eeRpt->GetTime(),
+                                eeRpt->GetLteEnergyEfficiency());
         }
 
         m_nearRtRic->NotifyReportReceived(report);

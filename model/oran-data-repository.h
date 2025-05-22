@@ -197,6 +197,18 @@ class OranDataRepository : public Object
                                    double rsrq,
                                    bool isServingCell,
                                    uint8_t componentCarrierId) = 0;
+                                   
+    /**
+     * Store the UE's energy‐efficiency KPI.
+     *
+     * \param e2NodeId   The E2 Node ID of the node.
+     * \param t          The time at which this KPI was reported.
+     * \param efficiency The energy‐efficiency value (e.g. bits per joule).
+     */
+    virtual void
+    SaveLteEnergyEfficiency(uint64_t e2NodeId,
+                              Time     t,
+                              double   efficiency) = 0;
 
     /* Data Access API */
     /**
@@ -271,6 +283,15 @@ class OranDataRepository : public Object
      * \return A collection of RNTI, cell ID, RSRP, RSRQ, is serving, and component carrier ID tuples.
      */
     virtual std::vector<std::tuple<uint16_t, uint16_t, double, double, bool, uint8_t>> GetLteUeRsrpRsrq(uint64_t e2NodeId) = 0;
+    
+    /**
+     * Get the last reported UE energy‐efficiency.
+     *
+     * \param e2NodeId The E2 Node ID.
+     * \return The latest energy‐efficiency measurement, or NaN if none.
+     */
+    virtual double
+    GetLteEnergyEfficiency(uint64_t e2NodeId) = 0;
 
     /* Logging API */
     /**

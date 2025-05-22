@@ -33,6 +33,9 @@
 
 #include "oran-command-lte-2-lte-handover.h"
 
+#include "oran-command-lte-2-lte-tx-power.h"
+#include <ns3/lte-enb-phy.h>   
+
 #include <ns3/abort.h>
 #include <ns3/log.h>
 #include <ns3/lte-enb-net-device.h>
@@ -94,6 +97,24 @@ OranE2NodeTerminatorLteEnb::ReceiveCommand(Ptr<OranCommand> command)
             lteEnbRrc->SendHandoverRequest(handoverCommand->GetTargetRnti(),
                                            handoverCommand->GetTargetCellId());
         }
+        
+        else if (command->GetInstanceTypeId()
+             == TypeId::LookupByName("ns3::OranCommandLte2LteTxPower"))
+        {
+            Ptr<OranCommandLte2LteTxPower> txCmd = DynamicCast<OranCommandLte2LteTxPower>(command);
+            double delta = txCmd->GetPowerDeltaDb();
+
+            // Apply it
+            Ptr<LteEnbNetDevice> dev = GetNetDevice();
+            Ptr<LteEnbPhy> phy       = dev->GetPhy();
+            double current           = phy->GetTxPower();
+            phy->SetTxPower(current + delta);
+
+            NS_LOG_INFO("eNB[" << GetE2NodeId()
+                     << "] applied TxPower delta " << delta << " dB");
+            return;
+        }
+
     }
 }
 

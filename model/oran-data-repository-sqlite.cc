@@ -410,6 +410,33 @@ OranDataRepositorySqlite::SaveLteUeRsrpRsrq(uint64_t e2NodeId,
     }
 }
 
+void
+OranDataRepositorySqlite::SaveLteEnergyEfficiency(
+    uint64_t e2NodeId,
+    Time     t,
+    double   efficiency)
+{
+    NS_LOG_FUNCTION(this << e2NodeId << t << efficiency);
+    if (!m_active || !IsNodeRegistered(e2NodeId)) return;
+
+    sqlite3_stmt* stmt = nullptr;
+    sqlite3_prepare_v2(
+        m_db,
+        m_queryStmtsStrings[INSERT_LTE_ENERGY_EFFICIENCY].c_str(),
+        -1, &stmt, nullptr);
+
+    sqlite3_bind_int64(stmt, 1, e2NodeId);
+    sqlite3_bind_int64(stmt, 2, t.GetTimeStep());
+    sqlite3_bind_double(stmt, 3, efficiency);
+
+    int rc = sqlite3_step(stmt);
+    CheckQueryReturnCode(
+        stmt, rc,
+        FormatBoundArgsList(e2NodeId, t.GetTimeStep(), efficiency));
+    sqlite3_finalize(stmt);
+}
+
+
 std::map<Time, Vector>
 OranDataRepositorySqlite::GetNodePositions(uint64_t e2NodeId,
                                            Time fromTime,
@@ -730,6 +757,43 @@ OranDataRepositorySqlite::GetLteUeRsrpRsrq(uint64_t e2NodeId)
 }
 
 
+double
+OranDataRepositorySqlite::GetLteEnergyEfficiency(uint64_t e2NodeId)
+{
+    NS_LOG_FUNCTION(this << e2NodeId);
+    double efficiency = std::numeric_limits<double>::quiet_NaN();
+
+    if (m_active && IsNodeRegistered(e2NodeId)) {
+        sqlite3_stmt* stmt = nullptr;
+        // Prepare the query we set up in InitStatements()
+        sqlite3_prepare_v2(
+            m_db,
+            m_queryStmtsStrings[GET_LTE_ENERGY_EFFICIENCY].c_str(),
+            -1,
+            &stmt,
+            nullptr);
+
+        // Bind nodeId twice, per our WHERE ... IN (...) clause
+        sqlite3_bind_int64(stmt, 1, e2NodeId);
+        sqlite3_bind_int64(stmt, 2, e2NodeId);
+
+        // Execute and read the single column
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            efficiency = sqlite3_column_double(stmt, 0);
+        }
+
+        // Error‐check and clean up
+        CheckQueryReturnCode(
+            stmt,
+            sqlite3_errcode(m_db),
+            FormatBoundArgsList(e2NodeId, e2NodeId)
+        );
+        sqlite3_finalize(stmt);
+    }
+
+    return efficiency;
+}
+
 void
 OranDataRepositorySqlite::LogCommandE2Terminator(Ptr<OranCommand> cmd)
 {
@@ -967,6 +1031,7 @@ OranDataRepositorySqlite::InitDb()
     // LTE UE Cell Information
     RunCreateStatement(m_createStmtsStrings[TABLE_LTE_UE_CELL]);
     RunCreateStatement(m_createStmtsStrings[TABLE_LTE_UE_RSRP_RSRQ]);
+    RunCreateStatement(m_createStmtsStrings[TABLE_LTE_ENERGY_EFFICIENCY]);
     RunCreateStatement(m_createStmtsStrings[INDEX_LTE_UE_CELL_NODEID]);
     RunCreateStatement(m_createStmtsStrings[INDEX_LTE_UE_CELL_CELLID]);
 
@@ -1073,6 +1138,15 @@ OranDataRepositorySqlite::InitStatements()
         "ccid           BOOLEAN                           NOT NULL, "
         "FOREIGN KEY(cellid) REFERENCES lteenb(cellid), "
         "FOREIGN KEY(nodeid) REFERENCES lteue(nodeid));";
+        
+    m_createStmtsStrings[TABLE_LTE_ENERGY_EFFICIENCY] =
+        "CREATE TABLE IF NOT EXISTS lteueenergyefficiency ("
+        " entryid         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"
+        " nodeid          INTEGER                    NOT NULL,"
+        " simulationtime  INTEGER                    NOT NULL,"
+        " efficiency      REAL                       NOT NULL,"
+        " FOREIGN KEY(nodeid) REFERENCES lteue(nodeid)"
+        ");";
 
     m_createStmtsStrings[TABLE_NODE] =
         "CREATE TABLE IF NOT EXISTS node ("
@@ -1172,6 +1246,17 @@ OranDataRepositorySqlite::InitStatements()
             "WHERE nodeid = ? "
             "ORDER BY simulationtime DESC LIMIT 1"
           ");";
+          
+    m_queryStmtsStrings[GET_LTE_ENERGY_EFFICIENCY] =
+        "SELECT efficiency "
+        "FROM lteueenergyefficiency "
+        "WHERE nodeid = ? "
+          "AND simulationtime IN ("
+            "SELECT simulationtime "
+            "FROM lteueenergyefficiency "
+            "WHERE nodeid = ? "
+            "ORDER BY simulationtime DESC LIMIT 1"
+          ");";
 
     m_queryStmtsStrings[INSERT_LTE_ENB_NODE] = "INSERT OR REPLACE INTO lteenb "
                                                "(nodeid, cellid) VALUES (?, ?);";
@@ -1200,6 +1285,10 @@ OranDataRepositorySqlite::InitStatements()
     m_queryStmtsStrings[INSERT_LTE_UE_RSRP_RSRQ] =
         "INSERT INTO lteuersrprsrq "
         "(nodeid, simulationtime, rnti, cellid, rsrp, rsrq, serving, ccid) VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
+        
+    m_queryStmtsStrings[INSERT_LTE_ENERGY_EFFICIENCY] =
+        "INSERT INTO lteueenergyefficiency "
+        "(nodeid, simulationtime, efficiency) VALUES (?, ?, ?);";
 
     m_queryStmtsStrings[LOG_CMM_ACTION] =
         "INSERT INTO cmmaction "

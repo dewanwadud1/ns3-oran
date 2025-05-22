@@ -44,6 +44,7 @@
 
 // #include <ns3/test.h>
 
+//#include "oran-reporter-lte-energy-efficiency.h"
 
 #include <fstream>
 #include <iostream>
@@ -235,6 +236,7 @@ main(int argc, char* argv[])
     Time lmQueryInterval = Seconds(5);
     std::string dbFileName = "oran-repository.db";
     std::string lateCommandPolicy = "DROP";
+    
     
     // Energy Harvester variables
     double harvestingUpdateInterval = 1;  // seconds
@@ -496,8 +498,16 @@ main(int argc, char* argv[])
                                       "ProcessingDelayRv",
                                       StringValue(processingDelayRv));
     oranHelper->SetConflictMitigationModule("ns3::OranCmmNoop");
+    
+    // --- also run our new energy‐saving LM
+    oranHelper->AddLogicModule("ns3::OranLmLte2LteEnergySaving",
+                               "TargetEfficiency", DoubleValue(1e3),  // adjust as you like
+                               "StepSize",       DoubleValue(1.0));
 
     nearRtRic = oranHelper->CreateNearRtRic();
+    
+    std::vector<Ptr<OranReporterLteEnergyEfficiency>> eeReporters;
+    eeReporters.reserve(numberOfUes);
 
     // UE Nodes setup
     for (uint32_t idx = 0; idx < ueNodes.GetN(); idx++)
@@ -505,7 +515,10 @@ main(int argc, char* argv[])
         Ptr<OranReporterLocation> locationReporter = CreateObject<OranReporterLocation>();
         Ptr<OranReporterLteUeCellInfo> lteUeCellInfoReporter =
             CreateObject<OranReporterLteUeCellInfo>();
-        Ptr<OranReporterLteUeRsrpRsrq> rsrpRsrqReporter = CreateObject<OranReporterLteUeRsrpRsrq>();
+        Ptr<OranReporterLteUeRsrpRsrq> rsrpRsrqReporter = 
+        CreateObject<OranReporterLteUeRsrpRsrq>();
+        Ptr<OranReporterLteEnergyEfficiency> eeReporter = 
+        CreateObject<OranReporterLteEnergyEfficiency>();
         Ptr<OranE2NodeTerminatorLteUe> lteUeTerminator =
             CreateObject<OranE2NodeTerminatorLteUe>();
 
@@ -514,6 +527,8 @@ main(int argc, char* argv[])
         lteUeCellInfoReporter->SetAttribute("Terminator", PointerValue(lteUeTerminator));
 
         rsrpRsrqReporter->SetAttribute("Terminator", PointerValue(lteUeTerminator));
+        
+        eeReporter->SetAttribute("Terminator", PointerValue(lteUeTerminator));
 
         for (uint32_t netDevIdx = 0; netDevIdx < ueNodes.Get(idx)->GetNDevices(); netDevIdx++)
         {
@@ -534,6 +549,9 @@ main(int argc, char* argv[])
         lteUeTerminator->AddReporter(locationReporter);
         lteUeTerminator->AddReporter(lteUeCellInfoReporter);
         lteUeTerminator->AddReporter(rsrpRsrqReporter);
+        lteUeTerminator->AddReporter(eeReporter);
+        
+        eeReporters.push_back(eeReporter);
 
         lteUeTerminator->Attach(ueNodes.Get(idx));
 
@@ -623,6 +641,15 @@ main(int argc, char* argv[])
     
 
     Simulator::Stop(simTime);
+    
+    
+    // turn on INFO‐level logging for our energy‐saving LM
+    LogComponentEnable("OranLmLte2LteEnergySaving", LOG_LEVEL_INFO);
+
+    // if you want timestamps on *all* log lines globally, do this once:
+    // LogComponentEnable("Core", LOG_PREFIX_TIME);
+    
+    
     Simulator::Run();
     
     
@@ -646,7 +673,11 @@ main(int argc, char* argv[])
     //std::cout << "Total Energy Consumed (Joules): " << totalEnergyConsumed << std::endl;
     //std::cout << "Energy Efficiency (bits/Joule): " << energyEfficiency << std::endl; 
     
-
+    for (auto& rep : eeReporters) {
+      rep->ReportEnergyEfficiency(energyEfficiency);
+    }
+    
+    
     Simulator::Destroy();
     
     return 0;
