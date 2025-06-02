@@ -506,29 +506,45 @@ main(int argc, char* argv[])
 
     nearRtRic = oranHelper->CreateNearRtRic();
     
-    std::vector<Ptr<OranReporterLteEnergyEfficiency>> eeReporters;
-    eeReporters.reserve(numberOfUes);
+    //std::vector<Ptr<OranReporterLteEnergyEfficiency>> eeReporters;
+    //eeReporters.reserve(numberOfUes);
+    
+
+    // Instead, for gNB reporters:
+    std::vector<Ptr<OranReporterLteEnergyEfficiency>> enbEeReporters;
+    enbEeReporters.reserve(numberOfEnbs);
+
 
     // UE Nodes setup
     for (uint32_t idx = 0; idx < ueNodes.GetN(); idx++)
     {
         Ptr<OranReporterLocation> locationReporter = CreateObject<OranReporterLocation>();
+        Ptr<OranReporterAppLoss> appLossReporter = CreateObject<OranReporterAppLoss>();
         Ptr<OranReporterLteUeCellInfo> lteUeCellInfoReporter =
             CreateObject<OranReporterLteUeCellInfo>();
         Ptr<OranReporterLteUeRsrpRsrq> rsrpRsrqReporter = 
         CreateObject<OranReporterLteUeRsrpRsrq>();
-        Ptr<OranReporterLteEnergyEfficiency> eeReporter = 
-        CreateObject<OranReporterLteEnergyEfficiency>();
+        //Ptr<OranReporterLteEnergyEfficiency> eeReporter = 
+        //CreateObject<OranReporterLteEnergyEfficiency>();
         Ptr<OranE2NodeTerminatorLteUe> lteUeTerminator =
             CreateObject<OranE2NodeTerminatorLteUe>();
 
         locationReporter->SetAttribute("Terminator", PointerValue(lteUeTerminator));
+        
+        appLossReporter->SetAttribute("Terminator", PointerValue(lteUeTerminator));
+        
+        remoteApps.Get(idx)->TraceConnectWithoutContext(
+            "Tx",
+            MakeCallback(&ns3::OranReporterAppLoss::AddTx, appLossReporter));
+        ueApps.Get(idx)->TraceConnectWithoutContext(
+            "Rx",
+            MakeCallback(&ns3::OranReporterAppLoss::AddRx, appLossReporter));
 
         lteUeCellInfoReporter->SetAttribute("Terminator", PointerValue(lteUeTerminator));
 
         rsrpRsrqReporter->SetAttribute("Terminator", PointerValue(lteUeTerminator));
         
-        eeReporter->SetAttribute("Terminator", PointerValue(lteUeTerminator));
+        //eeReporter->SetAttribute("Terminator", PointerValue(lteUeTerminator));
 
         for (uint32_t netDevIdx = 0; netDevIdx < ueNodes.Get(idx)->GetNDevices(); netDevIdx++)
         {
@@ -547,11 +563,12 @@ main(int argc, char* argv[])
                                       StringValue("ns3::ConstantRandomVariable[Constant=1]"));
 
         lteUeTerminator->AddReporter(locationReporter);
+        lteUeTerminator->AddReporter(appLossReporter);
         lteUeTerminator->AddReporter(lteUeCellInfoReporter);
         lteUeTerminator->AddReporter(rsrpRsrqReporter);
-        lteUeTerminator->AddReporter(eeReporter);
+        //lteUeTerminator->AddReporter(eeReporter);
         
-        eeReporters.push_back(eeReporter);
+        //eeReporters.push_back(eeReporter);
 
         lteUeTerminator->Attach(ueNodes.Get(idx));
 
@@ -568,8 +585,28 @@ main(int argc, char* argv[])
     oranHelper->AddReporter("ns3::OranReporterLocation",
                             "Trigger",
                             StringValue("ns3::OranReportTriggerPeriodic"));
+                            
+    oranHelper->AddReporter("ns3::OranReporterLteEnergyEfficiency",
+                            "Trigger",
+                            StringValue("ns3::OranReportTriggerPeriodic"));
 
     e2NodeTerminatorsEnbs.Add(oranHelper->DeployTerminators(nearRtRic, enbNodes));
+    
+    //Ptr<OranReporterLteEnergyEfficiency> enbEeReporters = 
+    //    CreateObject<OranReporterLteEnergyEfficiency>();
+    // --- Attach energy‐efficiency reporters to each eNB terminator ---
+    for (auto it = e2NodeTerminatorsEnbs.Begin(); it != e2NodeTerminatorsEnbs.End(); ++it)
+    {
+      Ptr<OranE2NodeTerminatorLteEnb> enbTerm =
+        DynamicCast<OranE2NodeTerminatorLteEnb>(*it);
+      Ptr<OranReporterLteEnergyEfficiency> rpt =
+        CreateObject<OranReporterLteEnergyEfficiency>();
+      rpt->SetAttribute("Terminator", PointerValue(enbTerm));
+      enbTerm->AddReporter(rpt);
+      enbEeReporters.push_back(rpt);
+    }
+    
+
 
     // DB logging to the terminal
     if (dbLog)
@@ -673,9 +710,11 @@ main(int argc, char* argv[])
     //std::cout << "Total Energy Consumed (Joules): " << totalEnergyConsumed << std::endl;
     //std::cout << "Energy Efficiency (bits/Joule): " << energyEfficiency << std::endl; 
     
-    for (auto& rep : eeReporters) {
-      rep->ReportEnergyEfficiency(energyEfficiency);
-    }
+    // At end of sim, push the gNB‐side KPI into the repository:
+    //for (auto& rep : enbEeReporters) {
+    //  rep->ReportEnergyEfficiency(energyEfficiency);
+    //}
+
     
     
     Simulator::Destroy();

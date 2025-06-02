@@ -98,6 +98,8 @@ class OranReporterAppLoss : public OranReporter
      * The number of recived packets.
      */
     uint64_t m_rx;
+    uint32_t m_txBytes; //!< Number of bytes transmitted
+    uint32_t m_rxBytes; //!< Number of bytes received
 };
 
 } // namespace ns3

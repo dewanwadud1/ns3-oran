@@ -42,7 +42,7 @@
     * \brief Enqueue an energy‐efficiency measurement for reporting.
     * \param efficiency Energy‐efficiency KPI (e.g., bits per joule).
     */
-   void ReportEnergyEfficiency (double efficiency);
+   void ReportEnergyEfficiency(void);
  
  protected:
    /**

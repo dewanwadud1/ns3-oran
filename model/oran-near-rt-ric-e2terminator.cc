@@ -219,6 +219,8 @@ OranNearRtRicE2Terminator::ReceiveReport(Ptr<OranReport> report)
             Ptr<OranReportAppLoss> appLossRpt = report->GetObject<OranReportAppLoss>();
             m_data->SaveAppLoss(appLossRpt->GetReporterE2NodeId(),
                                 appLossRpt->GetLoss(),
+                                appLossRpt->GetTx(),
+                                appLossRpt->GetRx(),
                                 appLossRpt->GetTime());
         }
         else if (report->GetInstanceTypeId() == TypeId::LookupByName("ns3::OranReportLteUeRsrpRsrq"))
@@ -237,9 +239,9 @@ OranNearRtRicE2Terminator::ReceiveReport(Ptr<OranReport> report)
     else if (report->GetInstanceTypeId() == TypeId::LookupByName("ns3::OranReportLteEnergyEfficiency"))
         {
             Ptr<OranReportLteEnergyEfficiency> eeRpt = report->GetObject<OranReportLteEnergyEfficiency>();
-            m_data->SaveLteEnergyEfficiency(eeRpt->GetReporterE2NodeId(),
+            m_data->SaveLteEnergyRemaining(eeRpt->GetReporterE2NodeId(),
                                 eeRpt->GetTime(),
-                                eeRpt->GetLteEnergyEfficiency());
+                                eeRpt->GetLteEnergyRemaining());
         }
 
         m_nearRtRic->NotifyReportReceived(report);

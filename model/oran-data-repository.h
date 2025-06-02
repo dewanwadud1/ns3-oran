@@ -174,9 +174,11 @@ class OranDataRepository : public Object
      *
      * \param e2NodeId The E2 Node ID of the node.
      * \param appLoss The application packet loss.
+     * \param tx The number of transmitted bytes.
+     * \param rx The number of received bytes.
      * \param t The time at which this cell information was reported by the node.
      */
-    virtual void SaveAppLoss(uint64_t e2NodeId, double appLoss, Time t) = 0;
+    virtual void SaveAppLoss(uint64_t e2NodeId, double appLoss, uint32_t tx, uint32_t rx, Time t) = 0;
     /**
      * Store the UE's RSRP and RSRQ.
      *
@@ -199,16 +201,16 @@ class OranDataRepository : public Object
                                    uint8_t componentCarrierId) = 0;
                                    
     /**
-     * Store the UE's energy‐efficiency KPI.
+     * Store the eNB's remaining energy.
      *
      * \param e2NodeId   The E2 Node ID of the node.
      * \param t          The time at which this KPI was reported.
-     * \param efficiency The energy‐efficiency value (e.g. bits per joule).
+     * \param remaining The remaining energy (in joules).
      */
     virtual void
-    SaveLteEnergyEfficiency(uint64_t e2NodeId,
+    SaveLteEnergyRemaining(uint64_t e2NodeId,
                               Time     t,
-                              double   efficiency) = 0;
+                              double   remaining) = 0;
 
     /* Data Access API */
     /**
@@ -277,6 +279,13 @@ class OranDataRepository : public Object
      */
     virtual double GetAppLoss(uint64_t e2NodeId) = 0;
     /**
+     * Gets the last reported received bytes for a node.
+     *
+     * \param e2NodeId The E2 Node ID.
+     * \return The number of bytes.
+     */
+    virtual uint32_t GetAppRx(uint64_t e2NodeId) = 0;
+    /**
      * Gets the last reported RSRP and RSRQ values.
      *
      * \param e2NodeId The E2 Node ID.
@@ -290,8 +299,7 @@ class OranDataRepository : public Object
      * \param e2NodeId The E2 Node ID.
      * \return The latest energy‐efficiency measurement, or NaN if none.
      */
-    virtual double
-    GetLteEnergyEfficiency(uint64_t e2NodeId) = 0;
+    virtual double GetLteEnergyRemaining(uint64_t e2NodeId) = 0;
 
     /* Logging API */
     /**

@@ -203,6 +203,7 @@ build_lib(
     ${libcore}
     ${libnetwork}
     ${liblte}
+    ${libenergy}
     ${sqlite_libraries}
     ${torch_libraries}
     ${onnxruntime_libraries}

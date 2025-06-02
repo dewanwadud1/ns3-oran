@@ -47,13 +47,13 @@ public:
   std::string ToString () const override;
 
   /**
-   * \brief Retrieve the energy‐efficiency value.
-   * \return bits‐per‐joule (or whatever units you chose).
+   * \brief Retrieve the remaining energy value.
+   * \return joules remaining
    */
-  double GetLteEnergyEfficiency () const;
+  double GetLteEnergyRemaining () const;
 
 private:
-  double m_energyEfficiency; //!< KPI: bits transmitted per joule
+  double m_energyRemaining; //!< bits transmitted per joule
 };
 
 } // namespace ns3

@@ -81,27 +81,31 @@ OranLmLte2LteEnergySaving::Run(void)
   // For each UE, compute a delta and apply to all eNBs
   for (auto ueId : repo->GetLteUeE2NodeIds())
   {
-    double eff   = repo->GetLteEnergyEfficiency(ueId);
-    double delta = 0;
-    if      (eff < m_targetEfficiency)
-    {
-      delta =  m_stepSize;
-      NS_LOG_INFO("  UE " << ueId << ": eff=" << eff << " < target, ↑" << delta);
-    }
-    else if (eff > m_targetEfficiency)
-    {
-      delta = -m_stepSize;
-      NS_LOG_INFO("  UE " << ueId << ": eff=" << eff << " > target, ↓" << -delta);
-    }
-    else
-    {
-      NS_LOG_INFO("  UE " << ueId << ": eff=" << eff << " == target, no change");
-      continue;
-    }
+    uint32_t rxBytes = repo->GetAppRx(ueId);
 
     // Instead, emit one TxPower command per eNB:
     for (auto enbId : repo->GetLteEnbE2NodeIds())
     {
+      double remainingEnergy = repo->GetLteEnergyRemaining(enbId);
+      double consumed = 100000 - remainingEnergy; // initial - remaining
+      double eff   = (rxBytes * 8) / consumed;
+      double delta = 0;
+      if      (eff < m_targetEfficiency)
+      {
+        delta =  m_stepSize;
+        NS_LOG_INFO("  UE " << ueId << ": eff = (" << rxBytes << " * 8 / " << consumed << ") = " << eff << " < target, ↑" << delta);
+      }
+      else if (eff > m_targetEfficiency)
+      {
+        delta = -m_stepSize;
+        NS_LOG_INFO("  UE " << ueId << ": eff=" << eff << " > target, ↓" << -delta);
+      }
+      else
+      {
+        NS_LOG_INFO("  UE " << ueId << ": eff=" << eff << " == target, no change");
+        continue;
+      }
+
       Ptr<OranCommandLte2LteTxPower> cmd =
       CreateObject<OranCommandLte2LteTxPower>();
       cmd->SetAttribute("TargetE2NodeId", UintegerValue(enbId));

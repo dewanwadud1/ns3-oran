@@ -36,6 +36,7 @@
 #include <ns3/abort.h>
 #include <ns3/double.h>
 #include <ns3/log.h>
+#include <ns3/uinteger.h>
 
 namespace ns3
 {
@@ -52,8 +53,19 @@ OranReportAppLoss::GetTypeId(void)
                             .AddAttribute("Loss",
                                           "App Loss Rate",
                                           DoubleValue(),
-                                          MakeDoubleAccessor(&OranReportAppLoss::m_loss),
-                                          MakeDoubleChecker<double>());
+                              MakeDoubleAccessor(&OranReportAppLoss::m_loss),
+                                          MakeDoubleChecker<double>())
+                             .AddAttribute("Tx",
+                                          "App TX bytes",
+                                          UintegerValue(),
+                                                               MakeUintegerAccessor(&OranReportAppLoss::m_tx),
+                                          MakeUintegerChecker<uint32_t>())
+                             .AddAttribute("Rx",
+                                          "App RX bytes",
+                                          UintegerValue(),
+                              MakeUintegerAccessor(&OranReportAppLoss::m_rx),
+                                          MakeUintegerChecker<uint32_t>())
+                            ;
 
     return tid;
 }
@@ -77,7 +89,11 @@ OranReportAppLoss::ToString(void) const
     Time time = GetTime();
 
     ss << "OranReportAppLoss("
-       << "E2NodeId=" << GetReporterE2NodeId() << ";Time=" << time.As(Time::S) << ";Loss=" << m_loss
+       << "E2NodeId=" << GetReporterE2NodeId()
+       << ";Time=" << time.As(Time::S)
+       << ";Loss=" << m_loss
+       << ";Tx=" << m_tx
+       << ";Rx=" << m_rx
        << ")";
 
     return ss.str();
@@ -91,4 +107,19 @@ OranReportAppLoss::GetLoss(void) const
     return m_loss;
 }
 
+uint32_t
+OranReportAppLoss::GetTx(void) const
+{
+  NS_LOG_FUNCTION(this);
+
+  return m_tx;
+}
+
+uint32_t
+OranReportAppLoss::GetRx(void) const
+{
+  NS_LOG_FUNCTION(this);
+
+  return m_rx;
+}
 } // namespace ns3

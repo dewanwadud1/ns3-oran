@@ -341,7 +341,7 @@ OranDataRepositorySqlite::SaveLteUeCellInfo(uint64_t e2NodeId,
 }
 
 void
-OranDataRepositorySqlite::SaveAppLoss(uint64_t e2NodeId, double appLoss, Time t)
+OranDataRepositorySqlite::SaveAppLoss(uint64_t e2NodeId, double appLoss, uint32_t tx, uint32_t rx, Time t)
 {
     NS_LOG_FUNCTION(this << e2NodeId << appLoss << t);
 
@@ -353,19 +353,21 @@ OranDataRepositorySqlite::SaveAppLoss(uint64_t e2NodeId, double appLoss, Time t)
             std::string query;
             sqlite3_stmt* stmt = nullptr;
 
-            query = "INSERT INTO nodeapploss (nodeid, loss, simulationtime)"
-                    " VALUES (?, ?, ?)"
-                    ";";
+            query = "INSERT INTO nodeapploss (nodeid, loss, tx, rx, simulationtime)"
+                    " VALUES (?, ?, ?, ?, ?)"
+                     ";";
 
             sqlite3_prepare_v2(m_db, query.c_str(), -1, &stmt, 0);
 
             sqlite3_bind_int64(stmt, 1, e2NodeId);
             sqlite3_bind_double(stmt, 2, appLoss);
-            sqlite3_bind_int64(stmt, 3, t.GetTimeStep());
+            sqlite3_bind_int64(stmt, 3, tx);
+            sqlite3_bind_int64(stmt, 4, rx);
+            sqlite3_bind_int64(stmt, 5, t.GetTimeStep());
 
             rc = sqlite3_step(stmt);
 
-            CheckQueryReturnCode(stmt, rc, FormatBoundArgsList(e2NodeId, appLoss, t.GetTimeStep()));
+            CheckQueryReturnCode(stmt, rc, FormatBoundArgsList(e2NodeId, appLoss, tx, rx, t.GetTimeStep()));
             sqlite3_finalize(stmt);
         }
     }
@@ -411,12 +413,12 @@ OranDataRepositorySqlite::SaveLteUeRsrpRsrq(uint64_t e2NodeId,
 }
 
 void
-OranDataRepositorySqlite::SaveLteEnergyEfficiency(
+OranDataRepositorySqlite::SaveLteEnergyRemaining(
     uint64_t e2NodeId,
     Time     t,
-    double   efficiency)
+    double   remaining)
 {
-    NS_LOG_FUNCTION(this << e2NodeId << t << efficiency);
+    NS_LOG_FUNCTION(this << e2NodeId << t << remaining);
     if (!m_active || !IsNodeRegistered(e2NodeId)) return;
 
     sqlite3_stmt* stmt = nullptr;
@@ -427,15 +429,51 @@ OranDataRepositorySqlite::SaveLteEnergyEfficiency(
 
     sqlite3_bind_int64(stmt, 1, e2NodeId);
     sqlite3_bind_int64(stmt, 2, t.GetTimeStep());
-    sqlite3_bind_double(stmt, 3, efficiency);
+    sqlite3_bind_double(stmt, 3, remaining);
 
     int rc = sqlite3_step(stmt);
     CheckQueryReturnCode(
         stmt, rc,
-        FormatBoundArgsList(e2NodeId, t.GetTimeStep(), efficiency));
+        FormatBoundArgsList(e2NodeId, t.GetTimeStep(), remaining));
     sqlite3_finalize(stmt);
 }
 
+uint32_t
+OranDataRepositorySqlite::GetAppRx(uint64_t e2NodeId)
+{
+    NS_LOG_FUNCTION(this << e2NodeId);
+
+    uint32_t rx = 0;
+
+    if (m_active)
+    {
+        if (IsNodeRegistered(e2NodeId))
+        {
+            int rc;
+            std::string query;
+            sqlite3_stmt* stmt = nullptr;
+
+            query = "SELECT rx"
+                    " FROM nodeapploss"
+                    " WHERE nodeid = ?"
+                    " ORDER BY entryid DESC LIMIT 1"
+                    ";";
+
+            sqlite3_prepare_v2(m_db, query.c_str(), -1, &stmt, 0);
+
+            sqlite3_bind_int64(stmt, 1, e2NodeId);
+
+            while ((rc = sqlite3_step(stmt)) == SQLITE_ROW)
+            {
+                rx = sqlite3_column_int(stmt, 0);
+            }
+
+            CheckQueryReturnCode(stmt, rc, FormatBoundArgsList(e2NodeId));
+            sqlite3_finalize(stmt);
+        }
+    }
+    return rx;
+}
 
 std::map<Time, Vector>
 OranDataRepositorySqlite::GetNodePositions(uint64_t e2NodeId,
@@ -758,10 +796,10 @@ OranDataRepositorySqlite::GetLteUeRsrpRsrq(uint64_t e2NodeId)
 
 
 double
-OranDataRepositorySqlite::GetLteEnergyEfficiency(uint64_t e2NodeId)
+OranDataRepositorySqlite::GetLteEnergyRemaining(uint64_t e2NodeId)
 {
     NS_LOG_FUNCTION(this << e2NodeId);
-    double efficiency = std::numeric_limits<double>::quiet_NaN();
+    double remaining = std::numeric_limits<double>::quiet_NaN();
 
     if (m_active && IsNodeRegistered(e2NodeId)) {
         sqlite3_stmt* stmt = nullptr;
@@ -775,23 +813,29 @@ OranDataRepositorySqlite::GetLteEnergyEfficiency(uint64_t e2NodeId)
 
         // Bind nodeId twice, per our WHERE ... IN (...) clause
         sqlite3_bind_int64(stmt, 1, e2NodeId);
-        sqlite3_bind_int64(stmt, 2, e2NodeId);
+        //sqlite3_bind_int64(stmt, 2, e2NodeId);
 
         // Execute and read the single column
-        if (sqlite3_step(stmt) == SQLITE_ROW) {
-            efficiency = sqlite3_column_double(stmt, 0);
+        //if (sqlite3_step(stmt) == SQLITE_ROW) {
+        //    efficiency = sqlite3_column_double(stmt, 0);
+        //}
+        
+        int rc;
+        while ((rc = sqlite3_step(stmt)) == SQLITE_ROW)
+        {
+          remaining = sqlite3_column_double(stmt, 0);
         }
 
         // Error‐check and clean up
         CheckQueryReturnCode(
             stmt,
-            sqlite3_errcode(m_db),
-            FormatBoundArgsList(e2NodeId, e2NodeId)
+            rc,
+            FormatBoundArgsList(e2NodeId)
         );
         sqlite3_finalize(stmt);
     }
 
-    return efficiency;
+    return remaining;
 }
 
 void
@@ -1144,7 +1188,7 @@ OranDataRepositorySqlite::InitStatements()
         " entryid         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"
         " nodeid          INTEGER                    NOT NULL,"
         " simulationtime  INTEGER                    NOT NULL,"
-        " efficiency      REAL                       NOT NULL,"
+        " remaining       REAL                       NOT NULL,"
         " FOREIGN KEY(nodeid) REFERENCES lteue(nodeid)"
         ");";
 
@@ -1184,6 +1228,8 @@ OranDataRepositorySqlite::InitStatements()
         "entryid        INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
         "nodeid         INTEGER                           NOT NULL, "
         "loss           REAL                              NOT NULL, "
+        "tx             INTEGER                           NOT NULL, "
+        "rx             INTEGER                           NOT NULL, "
         "simulationtime INTEGER                           NOT NULL, "
         "FOREIGN KEY(nodeid) REFERENCES node(nodeid)              );";
 
@@ -1248,15 +1294,11 @@ OranDataRepositorySqlite::InitStatements()
           ");";
           
     m_queryStmtsStrings[GET_LTE_ENERGY_EFFICIENCY] =
-        "SELECT efficiency "
+        "SELECT remaining "
         "FROM lteueenergyefficiency "
         "WHERE nodeid = ? "
-          "AND simulationtime IN ("
-            "SELECT simulationtime "
-            "FROM lteueenergyefficiency "
-            "WHERE nodeid = ? "
-            "ORDER BY simulationtime DESC LIMIT 1"
-          ");";
+        "ORDER BY simulationtime DESC LIMIT 1"
+        ";";
 
     m_queryStmtsStrings[INSERT_LTE_ENB_NODE] = "INSERT OR REPLACE INTO lteenb "
                                                "(nodeid, cellid) VALUES (?, ?);";
@@ -1288,7 +1330,7 @@ OranDataRepositorySqlite::InitStatements()
         
     m_queryStmtsStrings[INSERT_LTE_ENERGY_EFFICIENCY] =
         "INSERT INTO lteueenergyefficiency "
-        "(nodeid, simulationtime, efficiency) VALUES (?, ?, ?);";
+        "(nodeid, simulationtime, remaining) VALUES (?, ?, ?);";
 
     m_queryStmtsStrings[LOG_CMM_ACTION] =
         "INSERT INTO cmmaction "

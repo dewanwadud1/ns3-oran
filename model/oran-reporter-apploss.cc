@@ -76,6 +76,7 @@ OranReporterAppLoss::AddTx(Ptr<const Packet> p)
     NS_LOG_FUNCTION(this << p);
 
     m_tx++;
+    m_txBytes += p->GetSize();
 }
 
 void
@@ -84,6 +85,7 @@ OranReporterAppLoss::AddRx(Ptr<const Packet> p, const Address& from)
     NS_LOG_FUNCTION(this << p << from);
 
     m_rx++;
+    m_rxBytes += p->GetSize();
 }
 
 std::vector<Ptr<OranReport>>
@@ -109,10 +111,15 @@ OranReporterAppLoss::GenerateReports(void)
         lossReport->SetAttribute("ReporterE2NodeId", UintegerValue(m_terminator->GetE2NodeId()));
         lossReport->SetAttribute("Time", TimeValue(Simulator::Now()));
         lossReport->SetAttribute("Loss", DoubleValue(loss));
+        lossReport->SetAttribute("Tx", UintegerValue(m_txBytes));
+        lossReport->SetAttribute("Rx", UintegerValue(m_rxBytes));
 
         reports.push_back(lossReport);
         m_tx = 0;
+        //m_txBytes = 0;
         m_rx = 0;
+        //m_rxBytes = 0;
+        
     }
 
     return reports;

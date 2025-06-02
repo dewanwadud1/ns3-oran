@@ -29,10 +29,10 @@ OranReportLteEnergyEfficiency::GetTypeId()
       .SetParent<OranReport>()
       .AddConstructor<OranReportLteEnergyEfficiency>()
       .AddAttribute(
-          "EnergyEfficiency",
-          "The energy-efficiency KPI (bits per joule)",
+          "EnergyRemaining",
+          "The remaingin joules",
           DoubleValue(),
-          MakeDoubleAccessor(&OranReportLteEnergyEfficiency::m_energyEfficiency),
+          MakeDoubleAccessor(&OranReportLteEnergyEfficiency::m_energyRemaining),
           MakeDoubleChecker<double>());
   return tid;
 }
@@ -56,16 +56,16 @@ OranReportLteEnergyEfficiency::ToString() const
   ss << "OranReportLteEnergyEfficiency(";
   ss << "E2NodeId=" << GetReporterE2NodeId();
   ss << ";Time=" << time.As(Time::S);
-  ss << ";EnergyEfficiency=" << m_energyEfficiency;
+  ss << ";EnergyRemaining=" << m_energyRemaining;
   ss << ")";
   return ss.str();
 }
 
 double
-OranReportLteEnergyEfficiency::GetLteEnergyEfficiency() const
+OranReportLteEnergyEfficiency::GetLteEnergyRemaining() const
 {
   NS_LOG_FUNCTION(this);
-  return m_energyEfficiency;
+  return m_energyRemaining;
 }
 
 } // namespace ns3

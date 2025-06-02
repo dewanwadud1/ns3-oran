@@ -13,6 +13,7 @@
  #include <ns3/log.h>
  #include <ns3/simulator.h>
  #include <ns3/uinteger.h>
+ #include <ns3/basic-energy-source.h>
  
  namespace ns3 {
  
@@ -39,15 +40,35 @@
  }
  
  void
- OranReporterLteEnergyEfficiency::ReportEnergyEfficiency(double efficiency)
+ OranReporterLteEnergyEfficiency::ReportEnergyEfficiency(void)
  {
-   NS_LOG_FUNCTION(this << efficiency);
+   NS_LOG_FUNCTION(this);
+   
    if (!m_active)
      {
        return;
      }
+     
    NS_ABORT_MSG_IF(m_terminator == nullptr,
                    "Reporter has no E2 terminator set");
+                   
+   Ptr<BasicEnergySource> basicSource = nullptr;
+   Ptr<EnergySourceContainer> container = nullptr;
+
+   container = m_terminator->GetNode()->GetObject<EnergySourceContainer>();
+
+   NS_ABORT_MSG_IF(container == nullptr, "Unable to find appropriate energy container");
+
+   double remaining = 0.0;
+   for (auto i = container->Begin(); i != container->End(); i++)
+   {
+      basicSource = (*i)->GetObject<BasicEnergySource>();
+
+      NS_ABORT_MSG_IF(basicSource == nullptr, "Unable to find appropriate energy source");
+
+      remaining += basicSource->GetRemainingEnergy();
+   }
+
  
    // Build the report object with the correct attributes
    Ptr<OranReportLteEnergyEfficiency> report =
@@ -56,8 +77,8 @@
                         UintegerValue(m_terminator->GetE2NodeId()));
    report->SetAttribute("Time",
                         TimeValue(Simulator::Now()));
-   report->SetAttribute("EnergyEfficiency",
-                        DoubleValue(efficiency));
+   report->SetAttribute("EnergyRemaining",
+                        DoubleValue(remaining));
  
    m_reports.push_back(report);
  }
@@ -67,6 +88,7 @@
  {
    NS_LOG_FUNCTION(this);
    std::vector<Ptr<OranReport>> reports;
+   ReportEnergyEfficiency();
    if (m_active)
      {
        reports = m_reports;

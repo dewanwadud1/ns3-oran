@@ -73,12 +73,25 @@ class OranReportAppLoss : public OranReport
      * \return The reported application packet loss.
      */
     double GetLoss(void) const;
+    
+    /**
+     * Gets the number of TX bytes
+     * \return The number of TX bytes.
+     */
+    uint32_t GetTx(void) const;
+    /**
+     * Gets the number of RX bytes
+     * \return The number of RX bytes.
+     */
+    uint32_t GetRx(void) const;
 
   private:
     /**
      * The application packet loss.
      */
     double m_loss;
+    uint32_t m_tx; //!< Number of TX bytes
+    uint32_t m_rx; //!< Number of RX bytes
 }; // class OranReportAppLoss
 
 } // namespace ns3
