@@ -52,7 +52,7 @@ SQLITE=sqlite3
 # Run simulations for configurations 0, 1, 2, and 3
 for config in {0..3}; do
     echo "Running simulation for configuration ${config}..."
-    ./ns3 run "oran-lte2lte-rsrp-ml-handover-example \
+    ./ns3 run "oran-lte-2-lte-ml-handover-example \
       --use-oran=true \
       --use-distance-lm=false \
       --use-onnx-lm=false \

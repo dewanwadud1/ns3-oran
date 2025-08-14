@@ -130,6 +130,7 @@ build_lib(
     model/oran-report-apploss.cc
     model/oran-report-lte-ue-rsrp-rsrq.cc
     model/oran-report-lte-energy-efficiency.cc
+    model/oran-ru-energy-model.cc
     model/oran-report-location.cc
     model/oran-report-lte-ue-cell-info.cc
     model/oran-reporter.cc
@@ -174,6 +175,7 @@ build_lib(
     model/oran-report-apploss.h
     model/oran-report-lte-ue-rsrp-rsrq.h
     model/oran-report-lte-energy-efficiency.h
+    model/oran-ru-energy-model.h
     model/oran-report-location.h
     model/oran-report-lte-ue-cell-info.h
     model/oran-reporter.h

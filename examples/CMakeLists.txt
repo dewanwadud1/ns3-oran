@@ -152,6 +152,85 @@ build_lib_example(
     ${libmobility}
 )
 
+build_lib_example(
+  NAME diffMobilityApplicationExp
+  SOURCE_FILES diffMobilityApplicationExp.cc
+  LIBRARIES_TO_LINK
+    ${libwifi}
+    ${libenergy}
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libapplications}
+    ${libnetanim}
+)
+
+build_lib_example(
+  NAME example-oran-ru-energy
+  SOURCE_FILES example-oran-ru-energy.cc
+  LIBRARIES_TO_LINK
+    ${libwifi}
+    ${libenergy}
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libapplications}
+    ${libnetanim}
+    ${libflow-monitor}
+    ${libconfig-store}
+)
+
+build_lib_example(
+  NAME code0
+  SOURCE_FILES code0.cc
+  LIBRARIES_TO_LINK
+    ${libwifi}
+    ${libenergy}
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libapplications}
+    ${libnetanim}
+)
+
+build_lib_example(
+  NAME code1
+  SOURCE_FILES code1.cc
+  LIBRARIES_TO_LINK
+    ${libwifi}
+    ${libenergy}
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libapplications}
+    ${libnetanim}
+    ${libflow-monitor}
+    ${libconfig-store}
+)
+
+build_lib_example(
+  NAME code2
+  SOURCE_FILES code2.cc
+  LIBRARIES_TO_LINK
+    ${libwifi}
+    ${libenergy}
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libapplications}
+    ${libnetanim}
+    ${libflow-monitor}
+    ${libconfig-store}
+)
+
+
+
+
 
 
 
