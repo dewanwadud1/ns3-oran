@@ -36,6 +36,8 @@
 #include <ns3/simulator.h>
 #include <ns3/string.h>
 
+#include <cmath>
+
 namespace ns3
 {
 
@@ -384,6 +386,14 @@ OranDataRepositorySqlite::SaveLteUeRsrpRsrq(uint64_t e2NodeId,
                                             uint8_t componentCarrierId)
 {
     NS_LOG_FUNCTION(this << e2NodeId << t << +rnti << +cellId << rsrp << rsrq << isServing << +componentCarrierId);
+    
+    // Drop bad readings (recommended)
+    if (!std::isfinite(rsrp) || !std::isfinite(rsrq)) {
+      NS_LOG_WARN("Skipping RSRP/RSRQ report with non-finite value: "
+                << "RSRP=" << rsrp << " RSRQ=" << rsrq
+                << " (rnti=" << +rnti << " cellId=" << +cellId << ")");
+      return;
+    }
 
     if (m_active)
     {

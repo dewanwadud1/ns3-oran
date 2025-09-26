@@ -228,6 +228,37 @@ build_lib_example(
     ${libconfig-store}
 )
 
+build_lib_example(
+  NAME oran-dublin-three
+  SOURCE_FILES oran-dublin-three.cc
+  LIBRARIES_TO_LINK
+    ${libwifi}
+    ${libenergy}
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libapplications}
+    ${libnetanim}
+    ${libflow-monitor}
+    ${libconfig-store}
+)
+
+build_lib_example(
+  NAME oran-dublin-city
+  SOURCE_FILES oran-dublin-city.cc
+  LIBRARIES_TO_LINK
+    ${libwifi}
+    ${libenergy}
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libapplications}
+    ${libnetanim}
+    ${libflow-monitor}
+    ${libconfig-store}
+)
 
 
 

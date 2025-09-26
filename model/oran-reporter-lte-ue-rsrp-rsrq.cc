@@ -29,18 +29,16 @@
  * employees is not subject to copyright protection within the United States.
  */
 
-#include "oran-reporter-lte-ue-rsrp-rsrq.h"
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 
+#include "oran-reporter-lte-ue-rsrp-rsrq.h"
 #include "oran-report-lte-ue-rsrp-rsrq.h"
 
 #include <ns3/abort.h>
-#include <ns3/address.h>
-#include <ns3/boolean.h>
-#include <ns3/double.h>
 #include <ns3/log.h>
-#include <ns3/packet.h>
-#include <ns3/simulator.h>
-#include <ns3/uinteger.h>
+#include <ns3/simulator.h>     
+#include <ns3/uinteger.h>   
+
 
 namespace ns3
 {
@@ -51,73 +49,68 @@ NS_OBJECT_ENSURE_REGISTERED(OranReporterLteUeRsrpRsrq);
 TypeId
 OranReporterLteUeRsrpRsrq::GetTypeId()
 {
-    static TypeId tid = TypeId("ns3::OranReporterLteUeRsrpRsrq")
-                            .SetParent<OranReporter>()
-                            .AddConstructor<OranReporterLteUeRsrpRsrq>();
-
-    return tid;
+  static TypeId tid = TypeId("ns3::OranReporterLteUeRsrpRsrq")
+                        .SetParent<OranReporter>()
+                        .AddConstructor<OranReporterLteUeRsrpRsrq>();
+  return tid;
 }
 
 OranReporterLteUeRsrpRsrq::OranReporterLteUeRsrpRsrq()
 {
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION(this);
 }
 
 OranReporterLteUeRsrpRsrq::~OranReporterLteUeRsrpRsrq()
 {
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION(this);
 }
 
 void
 OranReporterLteUeRsrpRsrq::ReportRsrpRsrq(uint16_t rnti,
-                        uint16_t cellId,
-                        double rsrp,
-                        double rsrq,
-                        bool isServingCell,
-                        uint8_t componentCarrierId)
+                                          uint16_t cellId,
+                                          double rsrp,
+                                          double rsrq,
+                                          bool isServingCell,
+                                          uint8_t componentCarrierId)
 {
-    NS_LOG_FUNCTION(this
-                    << +rnti
-                    << +cellId
-                    << rsrp
-                    << rsrq
-                    << isServingCell
-                    << componentCarrierId);
+  NS_LOG_FUNCTION(this << +rnti << +cellId << rsrp << rsrq
+                       << isServingCell << +componentCarrierId);
 
-    if (m_active)
-    {
-        NS_ABORT_MSG_IF(m_terminator == nullptr,
-                        "Attempting to generate reports in reporter with NULL E2 Terminator");
+  if (!m_active) return;
 
-        Ptr<OranReportLteUeRsrpRsrq> report = CreateObject<OranReportLteUeRsrpRsrq>();
-        report->SetAttribute("ReporterE2NodeId", UintegerValue(m_terminator->GetE2NodeId()));
-        report->SetAttribute("Time", TimeValue(Simulator::Now()));
-        report->SetAttribute("Rnti", UintegerValue(rnti));
-        report->SetAttribute("CellId", UintegerValue(cellId));
-        report->SetAttribute("Rsrp", DoubleValue(rsrp));
-        report->SetAttribute("Rsrq", DoubleValue(rsrq));
-        report->SetAttribute("IsServingCell", BooleanValue(isServingCell));
-        report->SetAttribute("ComponentCarrierId", UintegerValue(componentCarrierId));
+  NS_ABORT_MSG_IF(m_terminator == nullptr,
+                  "Attempting to generate reports in reporter with NULL E2 Terminator");
 
-        m_reports.push_back(report);
-    }
+  Ptr<OranReportLteUeRsrpRsrq> report = CreateObject<OranReportLteUeRsrpRsrq>();
+
+  // Keep attributes for base-class meta fields (these *do* exist as attributes)
+  report->SetAttribute("Time",             TimeValue(Simulator::Now()));
+  report->SetAttribute("ReporterE2NodeId", UintegerValue(m_terminator->GetE2NodeId()));
+
+  // Use typed setters for payload (bypass reflection on "Rsrq")
+  report->SetRnti(rnti);
+  report->SetCellId(cellId);
+  report->SetRsrp(rsrp);
+  report->SetRsrq(rsrq);
+  report->SetIsServingCell(isServingCell);
+  report->SetComponentCarrierId(static_cast<uint16_t>(componentCarrierId));
+
+  m_reports.push_back(report);
 }
-
 
 std::vector<Ptr<OranReport>>
 OranReporterLteUeRsrpRsrq::GenerateReports()
 {
-    NS_LOG_FUNCTION(this);
+  NS_LOG_FUNCTION(this);
 
-    std::vector<Ptr<OranReport>> reports;
-
-    if (m_active)
-    {
-        reports = m_reports;
-        m_reports.clear();
-    }
-
-    return reports;
+  std::vector<Ptr<OranReport>> reports;
+  if (m_active)
+  {
+    reports = m_reports;
+    m_reports.clear();
+  }
+  return reports;
 }
 
 } // namespace ns3
+

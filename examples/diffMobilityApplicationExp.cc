@@ -239,7 +239,7 @@
      double txPower = 30.0; // default TxPower in dBm
      cmd.AddValue("txPower", "eNB TxPower in dBm", txPower);
      
-     uint16_t numberOfUes = 10;
+     uint16_t numberOfUes = 50;
      uint16_t numberOfEnbs = 2;
      Time simTime = Seconds(10);
      Time maxWaitTime = Seconds(0.010);

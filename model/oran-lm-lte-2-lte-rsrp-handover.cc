@@ -1,259 +1,284 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 /**
- * NIST-developed software is provided by NIST as a public service. You may
- * use, copy and distribute copies of the software in any medium, provided that
- * you keep intact this entire notice. You may improve, modify and create
- * derivative works of the software or any portion of the software, and you may
- * copy and distribute such modifications or works. Modified works should carry
- * a notice stating that you changed the software and should note the date and
- * nature of any such change. Please explicitly acknowledge the National
- * Institute of Standards and Technology as the source of the software.
+ * RSRP-driven LTE→LTE handover LM with robust guards.
  *
- * NIST-developed software is expressly provided "AS IS." NIST MAKES NO
- * WARRANTY OF ANY KIND, EXPRESS, IMPLIED, IN FACT OR ARISING BY OPERATION OF
- * LAW, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTY OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT AND DATA ACCURACY. NIST
- * NEITHER REPRESENTS NOR WARRANTS THAT THE OPERATION OF THE SOFTWARE WILL BE
- * UNINTERRUPTED OR ERROR-FREE, OR THAT ANY DEFECTS WILL BE CORRECTED. NIST
- * DOES NOT WARRANT OR MAKE ANY REPRESENTATIONS REGARDING THE USE OF THE
- * SOFTWARE OR THE RESULTS THEREOF, INCLUDING BUT NOT LIMITED TO THE
- * CORRECTNESS, ACCURACY, RELIABILITY, OR USEFULNESS OF THE SOFTWARE.
- *
- * You are solely responsible for determining the appropriateness of using and
- * distributing the software and you assume all risks associated with its use,
- * including but not limited to the risks and costs of program errors,
- * compliance with applicable laws, damage to or loss of data, programs or
- * equipment, and the unavailability or interruption of operation. This
- * software is not intended to be used in any situation where a failure could
- * cause risk of injury or damage to property. The software developed by NIST
- * employees is not subject to copyright protection within the United States.
+ * Fixes:
+ *  - Map LTE cellId → eNB E2NodeId and verify presence using the Data Repository (no RIC lookup).
+ *  - Guard against missing serving eNB mapping (no uninitialized ids).
+ *  - Skip if RSRP measurements are absent or non-finite.
+ *  - Add per-UE handover hold-off and small hysteresis to avoid ping-pong.
  */
 
 #include "oran-lm-lte-2-lte-rsrp-handover.h"
 
 #include "oran-command-lte-2-lte-handover.h"
 #include "oran-data-repository.h"
+// No need to include RIC/E2 terminator headers for this LM
+// #include "oran-near-rt-ric.h"
+// #include "oran-e2-node-terminator.h"
+// #include "oran-e2-node-terminator-lte-enb.h"
 
 #include <ns3/abort.h>
 #include <ns3/log.h>
 #include <ns3/simulator.h>
 #include <ns3/uinteger.h>
 
+#include <algorithm>
 #include <cfloat>
+#include <cmath>
+#include <unordered_map>
+#include <utility>
 
 namespace ns3
 {
 
 NS_LOG_COMPONENT_DEFINE("OranLmLte2LteRsrpHandover");
-
 NS_OBJECT_ENSURE_REGISTERED(OranLmLte2LteRsrpHandover);
+
+/* ---------- Simple per-UE debounce (no header change) ---------- */
+namespace {
+  constexpr double kHoHoldoffSec = 1.5;   // seconds between HOs per UE
+  constexpr double kRsrpHystDb   = 1.0;   // require +1 dB better to trigger
+  std::unordered_map<uint64_t,double> g_lastHoTime; // ueE2Id -> last HO sim time (s)
+}
 
 TypeId
 OranLmLte2LteRsrpHandover::GetTypeId(void)
 {
-    static TypeId tid = TypeId("ns3::OranLmLte2LteRsrpHandover")
-                            .SetParent<OranLm>()
-                            .AddConstructor<OranLmLte2LteRsrpHandover>();
-
-    return tid;
+  static TypeId tid = TypeId("ns3::OranLmLte2LteRsrpHandover")
+                        .SetParent<OranLm>()
+                        .AddConstructor<OranLmLte2LteRsrpHandover>();
+  return tid;
 }
 
 OranLmLte2LteRsrpHandover::OranLmLte2LteRsrpHandover(void)
-    : OranLm()
+  : OranLm()
 {
-    NS_LOG_FUNCTION(this);
-
-    m_name = "OranLmLte2LteRsrpHandover";
+  m_name = "OranLmLte2LteRsrpHandover";
 }
 
-OranLmLte2LteRsrpHandover::~OranLmLte2LteRsrpHandover(void)
-{
-    NS_LOG_FUNCTION(this);
-}
+OranLmLte2LteRsrpHandover::~OranLmLte2LteRsrpHandover(void) = default;
 
 std::vector<Ptr<OranCommand>>
 OranLmLte2LteRsrpHandover::Run(void)
 {
-    NS_LOG_FUNCTION(this);
+  std::vector<Ptr<OranCommand>> commands;
 
-    std::vector<Ptr<OranCommand>> commands;
-
-    if (m_active)
-    {
-        NS_ABORT_MSG_IF(m_nearRtRic == nullptr,
-                        "Attempting to run LM (" + m_name + ") with NULL Near-RT RIC");
-
-        Ptr<OranDataRepository> data = m_nearRtRic->Data();
-        std::vector<UeInfo> ueInfos = GetUeInfos(data);
-        std::vector<EnbInfo> enbInfos = GetEnbInfos(data);
-        commands = GetHandoverCommands(data, ueInfos, enbInfos);
-    }
-
-    // Return the commands.
+  if (!m_active)
+  {
+    NS_LOG_INFO("RSRP LM inactive; skipping.");
     return commands;
+  }
+
+  NS_ABORT_MSG_IF(m_nearRtRic == nullptr,
+                  "Attempting to run LM (" + m_name + ") with NULL Near-RT RIC");
+
+  Ptr<OranDataRepository> data = m_nearRtRic->Data();
+
+  auto ueInfos  = GetUeInfos(data);
+  auto enbInfos = GetEnbInfos(data);
+
+  commands = GetHandoverCommands(data, ueInfos, enbInfos);
+  return commands;
 }
 
 std::vector<OranLmLte2LteRsrpHandover::UeInfo>
 OranLmLte2LteRsrpHandover::GetUeInfos(Ptr<OranDataRepository> data) const
 {
-    NS_LOG_FUNCTION(this << data);
+  std::vector<UeInfo> ueInfos;
+  for (auto ueId : data->GetLteUeE2NodeIds())
+  {
+    UeInfo ueInfo;
+    ueInfo.nodeId = ueId;
 
-    std::vector<UeInfo> ueInfos;
-    for (auto ueId : data->GetLteUeE2NodeIds())
+    bool found;
+    std::tie(found, ueInfo.cellId, ueInfo.rnti) = data->GetLteUeCellInfo(ueInfo.nodeId);
+    if (!found)
     {
-        UeInfo ueInfo;
-        ueInfo.nodeId = ueId;
-        // Get the current cell ID and RNTI of the UE and record it.
-        bool found;
-        std::tie(found, ueInfo.cellId, ueInfo.rnti) = data->GetLteUeCellInfo(ueInfo.nodeId);
-        if (found)
-        {
-            // Get the latest location of the UE.
-            std::map<Time, Vector> nodePositions =
-                data->GetNodePositions(ueInfo.nodeId, Seconds(0), Simulator::Now());
-
-            if (!nodePositions.empty())
-            {
-                // We found both the cell and location informtaion for this UE
-                // so record it for a later analysis.
-                ueInfo.position = nodePositions.rbegin()->second;
-                ueInfos.push_back(ueInfo);
-            }
-            else
-            {
-                NS_LOG_INFO("Could not find LTE UE location for E2 Node ID = " << ueInfo.nodeId);
-            }
-        }
-        else
-        {
-            NS_LOG_INFO("Could not find LTE UE cell info for E2 Node ID = " << ueInfo.nodeId);
-        }
+      NS_LOG_INFO("No UE cell info for E2 UE " << ueInfo.nodeId);
+      continue;
     }
-    return ueInfos;
+
+    auto nodePositions = data->GetNodePositions(ueInfo.nodeId, Seconds(0), Simulator::Now());
+    if (nodePositions.empty())
+    {
+      NS_LOG_INFO("No UE position for E2 UE " << ueInfo.nodeId);
+      continue;
+    }
+
+    ueInfo.position = nodePositions.rbegin()->second;
+    ueInfos.push_back(ueInfo);
+  }
+  return ueInfos;
 }
 
 std::vector<OranLmLte2LteRsrpHandover::EnbInfo>
 OranLmLte2LteRsrpHandover::GetEnbInfos(Ptr<OranDataRepository> data) const
 {
-    NS_LOG_FUNCTION(this << data);
+  std::vector<EnbInfo> enbInfos;
+  for (auto enbId : data->GetLteEnbE2NodeIds())
+  {
+    EnbInfo enbInfo;
+    enbInfo.nodeId = enbId;
 
-    std::vector<EnbInfo> enbInfos;
-    for (auto enbId : data->GetLteEnbE2NodeIds())
+    bool found;
+    std::tie(found, enbInfo.cellId) = data->GetLteEnbCellInfo(enbInfo.nodeId);
+    if (!found)
     {
-        EnbInfo enbInfo;
-        enbInfo.nodeId = enbId;
-        // Get the cell ID of this eNB and record it.
-        bool found;
-        std::tie(found, enbInfo.cellId) = data->GetLteEnbCellInfo(enbInfo.nodeId);
-        if (found)
-        {
-            // Get all known locations of the eNB.
-            std::map<Time, Vector> nodePositions =
-                data->GetNodePositions(enbInfo.nodeId, Seconds(0), Simulator::Now());
-
-            if (!nodePositions.empty())
-            {
-                // We found both the cell and location information for this
-                // eNB so record it for a later analysis.
-                enbInfo.position = nodePositions.rbegin()->second;
-                enbInfos.push_back(enbInfo);
-            }
-            else
-            {
-                NS_LOG_INFO("Could not find LTE eNB location for E2 Node ID = " << enbInfo.nodeId);
-            }
-        }
-        else
-        {
-            NS_LOG_INFO("Could not find LTE eNB cell info for E2 Node ID = " << enbInfo.nodeId);
-        }
+      NS_LOG_INFO("No eNB cell info for E2 eNB " << enbInfo.nodeId);
+      continue;
     }
-    return enbInfos;
+
+    auto nodePositions = data->GetNodePositions(enbInfo.nodeId, Seconds(0), Simulator::Now());
+    if (nodePositions.empty())
+    {
+      NS_LOG_INFO("No eNB position for E2 eNB " << enbInfo.nodeId);
+      continue;
+    }
+
+    enbInfo.position = nodePositions.rbegin()->second;
+    enbInfos.push_back(enbInfo);
+  }
+  return enbInfos;
+}
+
+/** Validate cellId→E2 mapping using the Data Repository only; return 0 if invalid. */
+static uint64_t
+SafeCellIdToEnbE2(Ptr<ns3::OranDataRepository> repo,
+                  const std::unordered_map<uint16_t, uint64_t>& cellToE2,
+                  uint16_t cellId)
+{
+  auto it = cellToE2.find(cellId);
+  if (it == cellToE2.end())
+  {
+    return 0; // no mapping for this cell
+  }
+  const uint64_t e2 = it->second;
+
+  // Confirm the E2 node is currently known by the repository
+  auto enbIds = repo->GetLteEnbE2NodeIds();
+  if (std::find(enbIds.begin(), enbIds.end(), e2) == enbIds.end())
+  {
+    return 0; // not registered/known at this time
+  }
+  return e2;
 }
 
 std::vector<Ptr<OranCommand>>
 OranLmLte2LteRsrpHandover::GetHandoverCommands(
     Ptr<OranDataRepository> data,
-    std::vector<OranLmLte2LteRsrpHandover::UeInfo> ueInfos,
-    std::vector<OranLmLte2LteRsrpHandover::EnbInfo> enbInfos) const
+    std::vector<UeInfo> ueInfos,
+    std::vector<EnbInfo> enbInfos) const
 {
-    NS_LOG_FUNCTION(this << data);
+  std::vector<Ptr<OranCommand>> commands;
 
-    std::vector<Ptr<OranCommand>> commands;
+  // Map LTE cellId -> eNB E2NodeId
+  std::unordered_map<uint16_t, uint64_t> cellIdToEnbE2;
+  cellIdToEnbE2.reserve(enbInfos.size());
+  for (const auto& e : enbInfos)
+    cellIdToEnbE2.emplace(e.cellId, e.nodeId);
 
-    // Compare the location of each active eNB with the location of each active
-    // UE and see if that UE is currently being served by the closet cell. If
-    // there is a closer eNB to the UE then the currently serving cell then
-    // issue a handover command.
-    for (auto ueInfo : ueInfos)
+  const double now = Simulator::Now().GetSeconds();
+
+  for (const auto& ueInfo : ueInfos)
+  {
+    // Debounce repeated HOs per UE
+    auto itLast = g_lastHoTime.find(ueInfo.nodeId);
+    if (itLast != g_lastHoTime.end() && (now - itLast->second) < kHoHoldoffSec)
     {
-        double max = -DBL_MAX;               // The maximum RSRP recorded.
-        uint64_t oldCellNodeId;             // The ID of the cell currently serving the UE.
-        uint16_t newCellId = ueInfo.cellId; // The ID of the closest cell.
-        auto rsrpMeasurements = data->GetLteUeRsrpRsrq(ueInfo.nodeId);
-        for (auto rsrpMeasurement : rsrpMeasurements)
-        {
-            uint16_t rnti;
-            uint16_t cellId;
-            double rsrp;
-            double rsrq;
-            bool isServingCell;
-            uint16_t componentCarrierId;
-            std::tie(rnti, cellId, rsrp, rsrq, isServingCell, componentCarrierId) = rsrpMeasurement;
-            LogLogicToRepository("RSRP from UE with RNTI " + std::to_string(rnti) +
-                                 " in CellID " + std::to_string(ueInfo.cellId) +
-                                 " to eNB with CellID " + std::to_string(cellId) + " is " +
-                                 std::to_string(rsrp));
-
-            // Check if the RSRP is greater than the current maximum
-            if (rsrp > max)
-            {
-                // Record the new maximum
-                max = rsrp;
-                // Record the ID of the cell that produced the new maximum.
-                newCellId = cellId;
-
-                LogLogicToRepository("RSRP to eNB with CellID " +
-                                     std::to_string(cellId) + " is largest so far");
-            }
-        }
-
-        for (const auto& enbInfo : enbInfos)
-        {
-            // Check if this cell is the currently serving this UE.
-            if (ueInfo.cellId == enbInfo.cellId)
-            {
-                // It is, so indicate record the ID of the cell that is
-                // currently serving the UE.
-                oldCellNodeId = enbInfo.nodeId;
-            }
-        }
-
-        // Check if the ID of the closest cell is different from ID of the cell
-        // that is currently serving the UE
-        if (newCellId != ueInfo.cellId)
-        {
-            // It is, so issue a handover command.
-            Ptr<OranCommandLte2LteHandover> handoverCommand =
-                CreateObject<OranCommandLte2LteHandover>();
-            // Send the command to the cell currently serving the UE.
-            handoverCommand->SetAttribute("TargetE2NodeId", UintegerValue(oldCellNodeId));
-            // Use the RNTI that the current cell is using to identify the UE.
-            handoverCommand->SetAttribute("TargetRnti", UintegerValue(ueInfo.rnti));
-            // Give the current cell the ID of the new cell to handover to.
-            handoverCommand->SetAttribute("TargetCellId", UintegerValue(newCellId));
-            // Log the command to the storage
-            data->LogCommandLm(m_name, handoverCommand);
-            // Add the command to send.
-            commands.push_back(handoverCommand);
-
-            LogLogicToRepository("eNB (CellID " + std::to_string(newCellId) + ")" +
-                                 " is different than the currently attached eNB" + " (CellID " +
-                                 std::to_string(ueInfo.cellId) + ")." +
-                                 " Issuing handover command.");
-        }
+      NS_LOG_INFO("UE " << ueInfo.nodeId << ": within HO hold-off; skipping.");
+      continue;
     }
-    return commands;
+
+    // Must have a valid RNTI
+    if (ueInfo.rnti == 0)
+    {
+      NS_LOG_WARN("UE " << ueInfo.nodeId << ": RNTI=0; suppressing HO.");
+      continue;
+    }
+
+    // Pull latest RSRP/RSRQ
+    auto meas = data->GetLteUeRsrpRsrq(ueInfo.nodeId);
+    if (meas.empty())
+    {
+      NS_LOG_INFO("UE " << ueInfo.nodeId << ": no RSRP/RSRQ measurements; skipping.");
+      continue;
+    }
+
+    // Track best & current-cell RSRP
+    double   bestRsrp = -DBL_MAX;
+    uint16_t bestCell = ueInfo.cellId;
+    double   currRsrp = -DBL_MAX;
+
+    for (const auto& m : meas)
+    {
+      uint16_t rnti, cellId; double rsrp, rsrq; bool serving; uint8_t ccid;
+      std::tie(rnti, cellId, rsrp, rsrq, serving, ccid) = m;
+
+      if (!std::isfinite(rsrp)) continue;     // guard against NaN/Inf
+
+      if (cellId == ueInfo.cellId && rsrp > currRsrp)
+        currRsrp = rsrp;
+
+      if (rsrp > bestRsrp)
+      {
+        bestRsrp = rsrp;
+        bestCell = cellId;
+      }
+    }
+
+    // If we never saw a finite current-cell RSRP, be conservative
+    if (!std::isfinite(currRsrp))
+    {
+      NS_LOG_WARN("UE " << ueInfo.nodeId << ": no finite current-cell RSRP; skipping.");
+      continue;
+    }
+
+    // If best is current (or not better than hysteresis), skip
+    if (bestCell == ueInfo.cellId || (bestRsrp - currRsrp) < kRsrpHystDb)
+      continue;
+
+    // Resolve **serving** and **target** eNB E2 ids and verify they exist (repo-based)
+    const uint64_t servingE2 = SafeCellIdToEnbE2(data, cellIdToEnbE2, ueInfo.cellId);
+    if (servingE2 == 0)
+    {
+      NS_LOG_WARN("UE " << ueInfo.nodeId
+                        << ": serving cellId " << ueInfo.cellId
+                        << " has no valid eNB E2 node; suppressing HO.");
+      continue;
+    }
+
+    const uint64_t targetE2  = SafeCellIdToEnbE2(data, cellIdToEnbE2, bestCell);
+    if (targetE2 == 0)
+    {
+      NS_LOG_WARN("UE " << ueInfo.nodeId
+                        << ": target cellId " << bestCell
+                        << " has no valid eNB E2 node; suppressing HO.");
+      continue;
+    }
+
+    // Build and log command
+    // Address the **serving eNB** (it executes the HO to target cellId).
+    Ptr<OranCommandLte2LteHandover> cmd = CreateObject<OranCommandLte2LteHandover>();
+    cmd->SetAttribute("TargetE2NodeId", UintegerValue(servingE2)); // execution terminator
+    cmd->SetAttribute("TargetRnti",     UintegerValue(ueInfo.rnti));
+    cmd->SetAttribute("TargetCellId",   UintegerValue(bestCell));
+
+    data->LogCommandLm(m_name, cmd);
+    commands.push_back(cmd);
+
+    g_lastHoTime[ueInfo.nodeId] = now;
+
+    NS_LOG_INFO("UE " << ueInfo.nodeId << ": HO requested "
+                 << ueInfo.cellId << " → " << bestCell
+                 << " (RSRP " << currRsrp << "→" << bestRsrp
+                 << ", servingE2 " << servingE2
+                 << ", targetE2 "  << targetE2
+                 << ", RNTI " << ueInfo.rnti << ")");
+  }
+
+  return commands;
 }
 
 } // namespace ns3
+

@@ -224,8 +224,8 @@ main(int argc, char* argv[])
     double txPower = 30.0; // default TxPower in dBm
     cmd.AddValue("txPower", "eNB TxPower in dBm", txPower);
     
-    uint16_t numberOfUes = 4;
-    uint16_t numberOfEnbs = 2;
+    uint16_t numberOfUes = 400;
+    uint16_t numberOfEnbs = 13;
     Time simTime = Seconds(30);
     Time maxWaitTime = Seconds(0.010); 
     std::string processingDelayRv = "ns3::NormalRandomVariable[Mean=0.005|Variance=0.000031]";

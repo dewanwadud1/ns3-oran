@@ -22,25 +22,24 @@
  * You are solely responsible for determining the appropriateness of using and
  * distributing the software and you assume all risks associated with its use,
  * including but not limited to the risks and costs of program errors,
- * compliance with applicable laws, damage to or rsrp of data, programs or
+ * compliance with applicable laws, damage to or loss of data, programs or
  * equipment, and the unavailability or interruption of operation. This
  * software is not intended to be used in any situation where a failure could
  * cause risk of injury or damage to property. The software developed by NIST
  * employees is not subject to copyright protection within the United States.
  */
 
+
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 #include "oran-report-lte-ue-rsrp-rsrq.h"
 
-#include "oran-report.h"
-
-#include <ns3/abort.h>
 #include <ns3/boolean.h>
 #include <ns3/double.h>
 #include <ns3/log.h>
 #include <ns3/uinteger.h>
+#include <sstream>
 
-namespace ns3
-{
+namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE("OranReportLteUeRsrpRsrq");
 NS_OBJECT_ENSURE_REGISTERED(OranReportLteUeRsrpRsrq);
@@ -48,121 +47,64 @@ NS_OBJECT_ENSURE_REGISTERED(OranReportLteUeRsrpRsrq);
 TypeId
 OranReportLteUeRsrpRsrq::GetTypeId()
 {
-    static TypeId tid = TypeId("ns3::OranReportLteUeRsrpRsrq")
-                            .SetParent<OranReport>()
-                            .AddConstructor<OranReportLteUeRsrpRsrq>()
-                            .AddAttribute("Rnti",
-                                          "The RNTI.",
-                                          UintegerValue(),
-                                          MakeUintegerAccessor(&OranReportLteUeRsrpRsrq::m_rnti),
-                                          MakeUintegerChecker<uint16_t>())
-                            .AddAttribute("CellId",
-                                          "The cell ID.",
-                                          UintegerValue(),
-                                          MakeUintegerAccessor(&OranReportLteUeRsrpRsrq::m_cellId),
-                                          MakeUintegerChecker<uint16_t>())
-                            .AddAttribute("Rsrp",
-                                          "The RSRP.",
-                                          DoubleValue(),
-                                          MakeDoubleAccessor(&OranReportLteUeRsrpRsrq::m_rsrp),
-                                          MakeDoubleChecker<double>())
-                            .AddAttribute("Rsrq",
-                                          "The RSRQ.",
-                                          DoubleValue(),
-                                          MakeDoubleAccessor(&OranReportLteUeRsrpRsrq::m_rsrq),
-                                          MakeDoubleChecker<double>())
-                            .AddAttribute("IsServingCell",
-                                          "The flag that indicates if this for the serving cell.",
-                                          BooleanValue(),
-                                          MakeBooleanAccessor(&OranReportLteUeRsrpRsrq::m_isServingCell),
-                                          MakeBooleanChecker())
-                            .AddAttribute("ComponentCarrierId",
-                                          "The component carrier ID.",
-                                          UintegerValue(),
-                                          MakeUintegerAccessor(&OranReportLteUeRsrpRsrq::m_componentCarrierId),
-                                          MakeUintegerChecker<uint16_t>());
-
-    return tid;
+  static TypeId tid = TypeId("ns3::OranReportLteUeRsrpRsrq")
+    .SetParent<OranReport>()
+    .AddConstructor<OranReportLteUeRsrpRsrq>()
+    // Attributes retained for inspection/config; not used at runtime anymore.
+    .AddAttribute("Rnti",  "The RNTI.",
+                  UintegerValue(0),
+                  MakeUintegerAccessor(&OranReportLteUeRsrpRsrq::m_rnti),
+                  MakeUintegerChecker<uint16_t>())
+    .AddAttribute("CellId","The cell ID.",
+                  UintegerValue(0),
+                  MakeUintegerAccessor(&OranReportLteUeRsrpRsrq::m_cellId),
+                  MakeUintegerChecker<uint16_t>())
+    .AddAttribute("Rsrp",  "The RSRP.",
+                  DoubleValue(0.0),
+                  MakeDoubleAccessor(&OranReportLteUeRsrpRsrq::m_rsrp),
+                  MakeDoubleChecker<double>())
+    .AddAttribute("Rsrq",  "The RSRQ.",
+                  DoubleValue(0.0),
+                  MakeDoubleAccessor(&OranReportLteUeRsrpRsrq::m_rsrq),
+                  MakeDoubleChecker<double>())
+    .AddAttribute("IsServingCell", "Is serving cell?",
+                  BooleanValue(false),
+                  MakeBooleanAccessor(&OranReportLteUeRsrpRsrq::m_isServingCell),
+                  MakeBooleanChecker())
+    .AddAttribute("ComponentCarrierId", "Component carrier ID.",
+                  UintegerValue(0),
+                  MakeUintegerAccessor(&OranReportLteUeRsrpRsrq::m_componentCarrierId),
+                  MakeUintegerChecker<uint16_t>());
+  return tid;
 }
 
-OranReportLteUeRsrpRsrq::OranReportLteUeRsrpRsrq()
-{
-    NS_LOG_FUNCTION(this);
-}
-
-OranReportLteUeRsrpRsrq::~OranReportLteUeRsrpRsrq()
-{
-    NS_LOG_FUNCTION(this);
-}
+OranReportLteUeRsrpRsrq::OranReportLteUeRsrpRsrq() { NS_LOG_FUNCTION(this); }
+OranReportLteUeRsrpRsrq::~OranReportLteUeRsrpRsrq() { NS_LOG_FUNCTION(this); }
 
 std::string
 OranReportLteUeRsrpRsrq::ToString() const
 {
-    NS_LOG_FUNCTION(this);
-
-    std::stringstream ss;
-    Time time = GetTime();
-
-    ss << "OranReportLteUeRsrpRsrq("
-       << "E2NodeId=" << GetReporterE2NodeId()
-       << ";Time=" << time.As(Time::S)
-       << ";RNTI=" << +m_rnti
-       << ";Cell ID=" << +m_cellId
-       << ";RSRP=" << m_rsrp
-       << ";RSRQ=" << m_rsrq
-       << ";Is Serving Cell=" << m_isServingCell
-       << ";Component Carrier ID=" << +m_componentCarrierId
-       << ")";
-
-    return ss.str();
+  std::stringstream ss;
+  Time time = GetTime();
+  ss << "OranReportLteUeRsrpRsrq("
+     << "E2NodeId=" << GetReporterE2NodeId()
+     << ";Time=" << time.As(Time::S)
+     << ";RNTI=" << +m_rnti
+     << ";CellID=" << +m_cellId
+     << ";RSRP=" << m_rsrp
+     << ";RSRQ=" << m_rsrq
+     << ";IsServing=" << m_isServingCell
+     << ";CCID=" << +m_componentCarrierId
+     << ")";
+  return ss.str();
 }
 
-uint16_t
-OranReportLteUeRsrpRsrq::GetRnti() const
-{
-  NS_LOG_FUNCTION(this);
-
-  return m_rnti;
-}
-
-uint16_t
-OranReportLteUeRsrpRsrq::GetCellId() const
-{
-  NS_LOG_FUNCTION(this);
-
-  return m_cellId;
-}
-
-double
-OranReportLteUeRsrpRsrq::GetRsrp() const
-{
-    NS_LOG_FUNCTION(this);
-
-    return m_rsrp;
-}
-
-double
-OranReportLteUeRsrpRsrq::GetRsrq() const
-{
-    NS_LOG_FUNCTION(this);
-
-    return m_rsrp;
-}
-
-bool
-OranReportLteUeRsrpRsrq::GetIsServingCell() const
-{
-  NS_LOG_FUNCTION(this);
-
-  return m_isServingCell;
-}
-
-uint16_t
-OranReportLteUeRsrpRsrq::GetComponentCarrierId() const
-{
-  NS_LOG_FUNCTION(this);
-
-  return m_componentCarrierId;
-}
+uint16_t OranReportLteUeRsrpRsrq::GetRnti() const { return m_rnti; }
+uint16_t OranReportLteUeRsrpRsrq::GetCellId() const { return m_cellId; }
+double   OranReportLteUeRsrpRsrq::GetRsrp()  const { return m_rsrp; }
+double   OranReportLteUeRsrpRsrq::GetRsrq()  const { return m_rsrq; } // <-- fixed
+bool     OranReportLteUeRsrpRsrq::GetIsServingCell() const { return m_isServingCell; }
+uint16_t OranReportLteUeRsrpRsrq::GetComponentCarrierId() const { return m_componentCarrierId; }
 
 } // namespace ns3
+

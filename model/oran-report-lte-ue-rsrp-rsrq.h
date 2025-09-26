@@ -29,108 +29,53 @@
  * employees is not subject to copyright protection within the United States.
  */
 
+/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
 #ifndef ORAN_REPORT_LTE_UE_RSRP_RSRQ
 #define ORAN_REPORT_LTE_UE_RSRP_RSRQ
 
 #include "oran-report.h"
-
 #include <string>
 
-namespace ns3
-{
+namespace ns3 {
 
 /**
  * \ingroup oran
- *
- * Report with the application packet loss of a node at a given time.
+ * UE RSRP/RSRQ report.
  */
 class OranReportLteUeRsrpRsrq : public OranReport
 {
-  public:
-    /**
-     * Get the TypeId of the OranReportLteUeRsrpRsrq class.
-     *
-     * \return The TypeId.
-     */
-    static TypeId GetTypeId();
-    /**
-     * Constructor of the OranReportLteUeRsrpRsrq class.
-     */
-    OranReportLteUeRsrpRsrq();
-    /**
-     * Destructor of the OranReportLteUeRsrpRsrq class.
-     */
-    ~OranReportLteUeRsrpRsrq() override;
-    /**
-     * Get a string representation of this Report
-     *
-     * \return A string representation of this Report.
-     */
-    std::string ToString() const override;
-    /**
-     * Gets the RNTI.
-     *
-     * \return The RNTI.
-     */
-    uint16_t GetRnti() const;
-    /**
-     * Gets the cell ID.
-     *
-     * \return The cell ID.
-     */
-    uint16_t GetCellId() const;
-    /**
-     * Gets the reported RSRP.
-     *
-     * \return The reported RSRP.
-     */
-    double GetRsrp() const;
-    /**
-     * Gets the reported RSRQ.
-     *
-     * \return The reported RSRQ.
-     */
-    double GetRsrq() const;
-    /**
-     * Gets the flag that indicates if this is for the serving cell.
-     *
-     * \return The flag.
-     */
-    bool GetIsServingCell() const;
-    /**
-     * Gets the component carrier ID.
-     *
-     * \return The component carrier ID.
-     */
-    uint16_t GetComponentCarrierId() const;
+public:
+  static TypeId GetTypeId();
 
-  private:
-    /**
-     * The RNTI.
-     */
-    uint16_t m_rnti;
-    /**
-     * The cell ID.
-     */
-    uint16_t m_cellId;
-    /**
-     * The RSRP.
-     */
-    double m_rsrp;
-    /**
-     * The RSRQ.
-     */
-    double m_rsrq;
-    /**
-     * A flag that indicates if the report is for the serving cell.
-     */
-    bool m_isServingCell;
-    /**
-     * The component carrier ID.
-     */
-    uint16_t m_componentCarrierId;
+  OranReportLteUeRsrpRsrq();
+  ~OranReportLteUeRsrpRsrq() override;
 
-}; // class OranReportLteUeRsrpRsrq
+  std::string ToString() const override;
+
+  // Getters
+  uint16_t GetRnti() const;
+  uint16_t GetCellId() const;
+  double   GetRsrp()  const;
+  double   GetRsrq()  const;   // <-- returns m_rsrq (not m_rsrp)
+  bool     GetIsServingCell() const;
+  uint16_t GetComponentCarrierId() const;
+
+  // Typed setters (use these instead of SetAttribute)
+  void SetRnti(uint16_t v)               { m_rnti = v; }
+  void SetCellId(uint16_t v)             { m_cellId = v; }
+  void SetRsrp(double v)                 { m_rsrp = v; }
+  void SetRsrq(double v)                 { m_rsrq = v; }
+  void SetIsServingCell(bool v)          { m_isServingCell = v; }
+  void SetComponentCarrierId(uint16_t v) { m_componentCarrierId = v; }
+
+private:
+  uint16_t m_rnti{0};
+  uint16_t m_cellId{0};
+  double   m_rsrp{0.0};
+  double   m_rsrq{0.0};
+  bool     m_isServingCell{false};
+  uint16_t m_componentCarrierId{0};
+};
 
 } // namespace ns3
 
