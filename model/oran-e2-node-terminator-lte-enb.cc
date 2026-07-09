@@ -30,11 +30,15 @@
 
 #include "oran-e2-node-terminator-lte-enb.h"
 
+#include "oran-command-lte-2-lte-cell-parameter.h"
 #include "oran-command-lte-2-lte-handover.h"
+#include "oran-command-lte-2-lte-tx-power.h"
+#include "oran-lte-cell-control-state.h"
 
 #include "ns3/abort.h"
 #include "ns3/log.h"
 #include "ns3/lte-enb-net-device.h"
+#include "ns3/lte-enb-phy.h"
 #include "ns3/lte-enb-rrc.h"
 #include "ns3/node.h"
 #include "ns3/pointer.h"
@@ -85,13 +89,51 @@ OranE2NodeTerminatorLteEnb::ReceiveCommand(Ptr<OranCommand> command)
     {
         if (command->GetInstanceTypeId() == OranCommandLte2LteHandover::GetTypeId())
         {
-            Ptr<Node> node = GetNode();
             Ptr<OranCommandLte2LteHandover> handoverCommand =
                 command->GetObject<OranCommandLte2LteHandover>();
-
             Ptr<LteEnbRrc> lteEnbRrc = GetNetDevice()->GetRrc();
             lteEnbRrc->SendHandoverRequest(handoverCommand->GetTargetRnti(),
                                            handoverCommand->GetTargetCellId());
+        }
+        else if (command->GetInstanceTypeId() == OranCommandLte2LteTxPower::GetTypeId())
+        {
+            Ptr<OranCommandLte2LteTxPower> txCmd =
+                command->GetObject<OranCommandLte2LteTxPower>();
+            Ptr<LteEnbPhy> phy = GetNetDevice()->GetPhy();
+            NS_ABORT_MSG_IF(phy == nullptr, "No LteEnbPhy on eNB; dropping TxPower cmd");
+
+            double deltaDb = txCmd->GetPowerDeltaDb();
+            double curDbm  = phy->GetTxPower();
+            double newDbm  = curDbm + deltaDb;
+            if (newDbm < 0.0) newDbm = 0.0;
+            if (newDbm > 70.0) newDbm = 70.0;
+            phy->SetTxPower(newDbm);
+
+            NS_LOG_INFO("eNB[E2=" << GetE2NodeId()
+                        << "] TxPower: " << curDbm << " dBm → " << newDbm
+                        << " dBm (Δ=" << deltaDb << " dB)");
+        }
+        else if (command->GetInstanceTypeId() == OranCommandLte2LteCellParameter::GetTypeId())
+        {
+            Ptr<OranCommandLte2LteCellParameter> paramCmd =
+                command->GetObject<OranCommandLte2LteCellParameter>();
+            const bool applied = ApplyLteCellControlParameter(GetE2NodeId(),
+                                                              paramCmd->GetParameterName(),
+                                                              paramCmd->GetValue(),
+                                                              paramCmd->IsDelta());
+            if (applied)
+            {
+                NS_LOG_INFO("eNB[E2=" << GetE2NodeId() << "] cell-control "
+                                      << paramCmd->GetParameterName() << "="
+                                      << paramCmd->GetValue()
+                                      << " isDelta=" << paramCmd->IsDelta());
+            }
+            else
+            {
+                NS_LOG_WARN("eNB[E2=" << GetE2NodeId()
+                                      << "] unknown cell-control parameter "
+                                      << paramCmd->GetParameterName());
+            }
         }
     }
 }

@@ -35,6 +35,8 @@
 #include "ns3/simulator.h"
 #include "ns3/string.h"
 
+#include <limits>
+
 namespace ns3
 {
 
@@ -368,6 +370,60 @@ OranDataRepositorySqlite::SaveAppLoss(uint64_t e2NodeId, double appLoss, Time t)
             sqlite3_finalize(stmt);
         }
     }
+}
+
+void
+OranDataRepositorySqlite::SaveLteEnergyRemaining(uint64_t e2NodeId, Time t, double remaining)
+{
+    NS_LOG_FUNCTION(this << e2NodeId << t << remaining);
+
+    if (!m_active || !IsNodeRegistered(e2NodeId))
+        return;
+
+    sqlite3_stmt* stmt = nullptr;
+    sqlite3_prepare_v2(m_db,
+                       m_queryStmtsStrings[INSERT_LTE_ENERGY_REMAINING].c_str(),
+                       -1,
+                       &stmt,
+                       nullptr);
+
+    sqlite3_bind_int64(stmt, 1, e2NodeId);
+    sqlite3_bind_int64(stmt, 2, t.GetTimeStep());
+    sqlite3_bind_double(stmt, 3, remaining);
+
+    int rc = sqlite3_step(stmt);
+    CheckQueryReturnCode(stmt, rc, FormatBoundArgsList(e2NodeId, t.GetTimeStep(), remaining));
+    sqlite3_finalize(stmt);
+}
+
+double
+OranDataRepositorySqlite::GetLteEnergyRemaining(uint64_t e2NodeId)
+{
+    NS_LOG_FUNCTION(this << e2NodeId);
+    double remaining = std::numeric_limits<double>::quiet_NaN();
+
+    if (m_active && IsNodeRegistered(e2NodeId))
+    {
+        sqlite3_stmt* stmt = nullptr;
+        sqlite3_prepare_v2(m_db,
+                           m_queryStmtsStrings[GET_LTE_ENERGY_REMAINING].c_str(),
+                           -1,
+                           &stmt,
+                           nullptr);
+
+        sqlite3_bind_int64(stmt, 1, e2NodeId);
+
+        int rc;
+        while ((rc = sqlite3_step(stmt)) == SQLITE_ROW)
+        {
+            remaining = sqlite3_column_double(stmt, 0);
+        }
+
+        CheckQueryReturnCode(stmt, rc, FormatBoundArgsList(e2NodeId));
+        sqlite3_finalize(stmt);
+    }
+
+    return remaining;
 }
 
 void
@@ -980,6 +1036,7 @@ OranDataRepositorySqlite::InitDb()
     // LTE UE Cell Information
     RunCreateStatement(m_createStmtsStrings[TABLE_LTE_UE_CELL]);
     RunCreateStatement(m_createStmtsStrings[TABLE_LTE_UE_RSRP_RSRQ]);
+    RunCreateStatement(m_createStmtsStrings[TABLE_LTE_ENERGY_REMAINING]);
     RunCreateStatement(m_createStmtsStrings[INDEX_LTE_UE_CELL_NODEID]);
     RunCreateStatement(m_createStmtsStrings[INDEX_LTE_UE_CELL_CELLID]);
 
@@ -1086,6 +1143,15 @@ OranDataRepositorySqlite::InitStatements()
         "ccid           BOOLEAN                           NOT NULL, "
         "FOREIGN KEY(cellid) REFERENCES lteenb(cellid), "
         "FOREIGN KEY(nodeid) REFERENCES lteue(nodeid));";
+
+    m_createStmtsStrings[TABLE_LTE_ENERGY_REMAINING] =
+        "CREATE TABLE IF NOT EXISTS enb_energy_remaining ("
+        " entryid         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"
+        " nodeid          INTEGER                    NOT NULL,"
+        " simulationtime  INTEGER                    NOT NULL,"
+        " remaining       REAL                       NOT NULL,"
+        " FOREIGN KEY(nodeid) REFERENCES node(nodeid)"
+        ");";
 
     m_createStmtsStrings[TABLE_NODE] =
         "CREATE TABLE IF NOT EXISTS node ("
@@ -1213,6 +1279,16 @@ OranDataRepositorySqlite::InitStatements()
         "INSERT INTO lteuersrprsrq "
         "(nodeid, simulationtime, rnti, cellid, rsrp, rsrq, serving, ccid) VALUES (?, ?, ?, ?, ?, "
         "?, ?, ?);";
+
+    m_queryStmtsStrings[GET_LTE_ENERGY_REMAINING] =
+        "SELECT remaining "
+        "FROM enb_energy_remaining "
+        "WHERE nodeid = ? "
+        "ORDER BY simulationtime DESC LIMIT 1;";
+
+    m_queryStmtsStrings[INSERT_LTE_ENERGY_REMAINING] =
+        "INSERT INTO enb_energy_remaining "
+        "(nodeid, simulationtime, remaining) VALUES (?, ?, ?);";
 
     m_queryStmtsStrings[LOG_CMM_ACTION] =
         "INSERT INTO cmmaction "

@@ -120,3 +120,88 @@ build_lib_example(
     ${libmobility}
 )
 
+build_lib_example(
+  NAME oran-lte-2-lte-energy-saving-example
+  SOURCE_FILES oran-lte-2-lte-energy-saving-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libenergy}
+)
+
+build_lib_example(
+  NAME oran-lte-2-lte-es-mro-conflict-mitigation-example
+  SOURCE_FILES oran-lte-2-lte-es-mro-conflict-mitigation-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libenergy}
+)
+
+build_lib_example(
+  NAME oran-dublin-es-mro-kpi-example
+  SOURCE_FILES oran-dublin-es-mro-kpi-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libenergy}
+)
+
+build_lib_example(
+  NAME oran-lte-2-lte-mlb-example
+  SOURCE_FILES oran-lte-2-lte-mlb-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+)
+
+build_lib_example(
+  NAME oran-lte-2-lte-cco-example
+  SOURCE_FILES oran-lte-2-lte-cco-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+)
+
+build_lib_example(
+  NAME oran-lte-2-lte-four-xapp-conflict-example
+  SOURCE_FILES oran-lte-2-lte-four-xapp-conflict-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libenergy}
+)
+
+build_lib_example(
+  NAME oran-lte-2-lte-proactive-conflict-example
+  SOURCE_FILES oran-lte-2-lte-proactive-conflict-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libenergy}
+)
+
+build_lib_example(
+  NAME oran-lte-2-lte-dublin-four-xapp-example
+  SOURCE_FILES oran-lte-2-lte-dublin-four-xapp-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${liblte}
+    ${libmobility}
+    ${libenergy}
+)

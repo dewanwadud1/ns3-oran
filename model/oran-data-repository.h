@@ -272,6 +272,21 @@ class OranDataRepository : public Object
      */
     virtual std::vector<std::tuple<uint16_t, uint16_t, double, double, bool, uint8_t>>
     GetLteUeRsrpRsrq(uint64_t e2NodeId) = 0;
+    /**
+     * Saves the remaining energy for a node at a given time.
+     *
+     * @param e2NodeId The E2 Node ID.
+     * @param t The simulation time.
+     * @param remaining Remaining energy in Joules.
+     */
+    virtual void SaveLteEnergyRemaining(uint64_t e2NodeId, Time t, double remaining) = 0;
+    /**
+     * Gets the last reported remaining energy for a node.
+     *
+     * @param e2NodeId The E2 Node ID.
+     * @return Remaining energy in Joules (NaN if not available).
+     */
+    virtual double GetLteEnergyRemaining(uint64_t e2NodeId) = 0;
 
     /* Logging API */
     /**

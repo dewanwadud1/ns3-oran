@@ -118,22 +118,34 @@ build_lib(
     model/oran-lm-noop.cc
     model/oran-lm-lte-2-lte-distance-handover.cc
     model/oran-lm-lte-2-lte-rsrp-handover.cc
+    model/oran-lm-lte-2-lte-energy-saving.cc
+    model/oran-lm-lte-2-lte-coverage-capacity-optimization.cc
+    model/oran-lm-lte-2-lte-mobility-load-balancing.cc
+    model/oran-lm-lte-2-lte-kpi-prediction.cc
     model/oran-cmm.cc
     model/oran-cmm-handover.cc
+    model/oran-cmm-lte-2-lte-es-mro.cc
+    model/oran-cmm-conflict-triage.cc
     model/oran-cmm-noop.cc
     model/oran-cmm-single-command-per-node.cc
     model/oran-command.cc
     model/oran-command-lte-2-lte-handover.cc
+    model/oran-command-lte-2-lte-tx-power.cc
+    model/oran-command-lte-2-lte-cell-parameter.cc
+    model/oran-lte-cell-control-state.cc
     model/oran-report.cc
     model/oran-report-apploss.cc
     model/oran-report-lte-ue-rsrp-rsrq.cc
     model/oran-report-location.cc
     model/oran-report-lte-ue-cell-info.cc
+    model/oran-report-lte-energy-efficiency.cc
     model/oran-reporter.cc
     model/oran-reporter-apploss.cc
     model/oran-reporter-lte-ue-rsrp-rsrq.cc
     model/oran-reporter-location.cc
     model/oran-reporter-lte-ue-cell-info.cc
+    model/oran-reporter-lte-energy-efficiency.cc
+    model/oran-ru-energy-model.cc
     model/oran-data-repository.cc
     model/oran-data-repository-sqlite.cc
     model/oran-near-rt-ric-e2terminator.cc
@@ -158,22 +170,34 @@ build_lib(
     model/oran-lm-noop.h
     model/oran-lm-lte-2-lte-distance-handover.h
     model/oran-lm-lte-2-lte-rsrp-handover.h
+    model/oran-lm-lte-2-lte-energy-saving.h
+    model/oran-lm-lte-2-lte-coverage-capacity-optimization.h
+    model/oran-lm-lte-2-lte-mobility-load-balancing.h
+    model/oran-lm-lte-2-lte-kpi-prediction.h
     model/oran-cmm.h
     model/oran-cmm-handover.h
+    model/oran-cmm-lte-2-lte-es-mro.h
+    model/oran-cmm-conflict-triage.h
     model/oran-cmm-noop.h
     model/oran-cmm-single-command-per-node.h
     model/oran-command.h
     model/oran-command-lte-2-lte-handover.h
+    model/oran-command-lte-2-lte-tx-power.h
+    model/oran-command-lte-2-lte-cell-parameter.h
+    model/oran-lte-cell-control-state.h
     model/oran-report.h
     model/oran-report-apploss.h
     model/oran-report-lte-ue-rsrp-rsrq.h
     model/oran-report-location.h
     model/oran-report-lte-ue-cell-info.h
+    model/oran-report-lte-energy-efficiency.h
     model/oran-reporter.h
     model/oran-reporter-apploss.h
     model/oran-reporter-lte-ue-rsrp-rsrq.h
     model/oran-reporter-location.h
     model/oran-reporter-lte-ue-cell-info.h
+    model/oran-reporter-lte-energy-efficiency.h
+    model/oran-ru-energy-model.h
     model/oran-data-repository.h
     model/oran-data-repository-sqlite.h
     model/oran-near-rt-ric-e2terminator.h
@@ -195,6 +219,7 @@ build_lib(
     ${libcore}
     ${libnetwork}
     ${liblte}
+    ${libenergy}
     ${sqlite_libraries}
     ${torch_libraries}
     ${onnxruntime_libraries}
@@ -203,4 +228,3 @@ build_lib(
 )
 
 target_compile_definitions(${liboran} PUBLIC ENABLE_ORAN)
-
