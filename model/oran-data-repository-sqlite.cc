@@ -427,6 +427,60 @@ OranDataRepositorySqlite::GetLteEnergyRemaining(uint64_t e2NodeId)
 }
 
 void
+OranDataRepositorySqlite::SaveLteUeAppDemand(uint64_t e2NodeId, Time t, double demandMbps)
+{
+    NS_LOG_FUNCTION(this << e2NodeId << t << demandMbps);
+
+    if (!m_active || !IsNodeRegistered(e2NodeId))
+        return;
+
+    sqlite3_stmt* stmt = nullptr;
+    sqlite3_prepare_v2(m_db,
+                       m_queryStmtsStrings[INSERT_LTE_UE_APP_DEMAND].c_str(),
+                       -1,
+                       &stmt,
+                       nullptr);
+
+    sqlite3_bind_int64(stmt, 1, e2NodeId);
+    sqlite3_bind_int64(stmt, 2, t.GetTimeStep());
+    sqlite3_bind_double(stmt, 3, demandMbps);
+
+    int rc = sqlite3_step(stmt);
+    CheckQueryReturnCode(stmt, rc, FormatBoundArgsList(e2NodeId, t.GetTimeStep(), demandMbps));
+    sqlite3_finalize(stmt);
+}
+
+double
+OranDataRepositorySqlite::GetLteUeAppDemand(uint64_t e2NodeId)
+{
+    NS_LOG_FUNCTION(this << e2NodeId);
+    double demandMbps = 0.0;
+
+    if (m_active && IsNodeRegistered(e2NodeId))
+    {
+        sqlite3_stmt* stmt = nullptr;
+        sqlite3_prepare_v2(m_db,
+                           m_queryStmtsStrings[GET_LTE_UE_APP_DEMAND].c_str(),
+                           -1,
+                           &stmt,
+                           nullptr);
+
+        sqlite3_bind_int64(stmt, 1, e2NodeId);
+
+        int rc;
+        while ((rc = sqlite3_step(stmt)) == SQLITE_ROW)
+        {
+            demandMbps = sqlite3_column_double(stmt, 0);
+        }
+
+        CheckQueryReturnCode(stmt, rc, FormatBoundArgsList(e2NodeId));
+        sqlite3_finalize(stmt);
+    }
+
+    return demandMbps;
+}
+
+void
 OranDataRepositorySqlite::SaveLteUeRsrpRsrq(uint64_t e2NodeId,
                                             Time t,
                                             uint16_t rnti,
@@ -1037,6 +1091,7 @@ OranDataRepositorySqlite::InitDb()
     RunCreateStatement(m_createStmtsStrings[TABLE_LTE_UE_CELL]);
     RunCreateStatement(m_createStmtsStrings[TABLE_LTE_UE_RSRP_RSRQ]);
     RunCreateStatement(m_createStmtsStrings[TABLE_LTE_ENERGY_REMAINING]);
+    RunCreateStatement(m_createStmtsStrings[TABLE_LTE_UE_APP_DEMAND]);
     RunCreateStatement(m_createStmtsStrings[INDEX_LTE_UE_CELL_NODEID]);
     RunCreateStatement(m_createStmtsStrings[INDEX_LTE_UE_CELL_CELLID]);
 
@@ -1150,6 +1205,15 @@ OranDataRepositorySqlite::InitStatements()
         " nodeid          INTEGER                    NOT NULL,"
         " simulationtime  INTEGER                    NOT NULL,"
         " remaining       REAL                       NOT NULL,"
+        " FOREIGN KEY(nodeid) REFERENCES node(nodeid)"
+        ");";
+
+    m_createStmtsStrings[TABLE_LTE_UE_APP_DEMAND] =
+        "CREATE TABLE IF NOT EXISTS ue_app_demand ("
+        " entryid         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"
+        " nodeid          INTEGER                    NOT NULL,"
+        " simulationtime  INTEGER                    NOT NULL,"
+        " demandmbps      REAL                       NOT NULL,"
         " FOREIGN KEY(nodeid) REFERENCES node(nodeid)"
         ");";
 
@@ -1289,6 +1353,16 @@ OranDataRepositorySqlite::InitStatements()
     m_queryStmtsStrings[INSERT_LTE_ENERGY_REMAINING] =
         "INSERT INTO enb_energy_remaining "
         "(nodeid, simulationtime, remaining) VALUES (?, ?, ?);";
+
+    m_queryStmtsStrings[GET_LTE_UE_APP_DEMAND] =
+        "SELECT demandmbps "
+        "FROM ue_app_demand "
+        "WHERE nodeid = ? "
+        "ORDER BY simulationtime DESC LIMIT 1;";
+
+    m_queryStmtsStrings[INSERT_LTE_UE_APP_DEMAND] =
+        "INSERT INTO ue_app_demand "
+        "(nodeid, simulationtime, demandmbps) VALUES (?, ?, ?);";
 
     m_queryStmtsStrings[LOG_CMM_ACTION] =
         "INSERT INTO cmmaction "

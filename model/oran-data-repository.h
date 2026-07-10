@@ -287,6 +287,24 @@ class OranDataRepository : public Object
      * @return Remaining energy in Joules (NaN if not available).
      */
     virtual double GetLteEnergyRemaining(uint64_t e2NodeId) = 0;
+    /**
+     * Saves the observed application-layer demand (throughput) for a UE at
+     * a given time. Used by bandwidth-capacity-aware xApps (e.g. MLB) to
+     * balance load against a fixed per-eNB capacity rather than raw UE
+     * count.
+     *
+     * @param e2NodeId The E2 Node ID of the UE.
+     * @param t The simulation time.
+     * @param demandMbps Observed demand in Mbps over the reporting interval.
+     */
+    virtual void SaveLteUeAppDemand(uint64_t e2NodeId, Time t, double demandMbps) = 0;
+    /**
+     * Gets the last reported application-layer demand for a UE.
+     *
+     * @param e2NodeId The E2 Node ID of the UE.
+     * @return Demand in Mbps (0 if never reported).
+     */
+    virtual double GetLteUeAppDemand(uint64_t e2NodeId) = 0;
 
     /* Logging API */
     /**

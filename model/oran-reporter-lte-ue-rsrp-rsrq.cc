@@ -41,6 +41,8 @@
 #include "ns3/simulator.h"
 #include "ns3/uinteger.h"
 
+#include <cmath>
+
 namespace ns3
 {
 
@@ -77,6 +79,21 @@ OranReporterLteUeRsrpRsrq::ReportRsrpRsrq(uint16_t rnti,
 {
     NS_LOG_FUNCTION(this << +rnti << +cellId << rsrp << rsrq << isServingCell
                          << componentCarrierId);
+
+    // Under non-ideal RRC + real PHY error models, a UE can occasionally
+    // report a degenerate (non-finite) RSRP/RSRQ measurement -- e.g. right
+    // around a radio link failure or a lost control channel, where the
+    // underlying SINR-to-dB computation hits a zero/negative linear value.
+    // The Rsrp/Rsrq attributes have no explicit bounds but their DoubleChecker
+    // still rejects +/-inf, which would otherwise abort the simulation for
+    // what is really just a "no usable measurement this instant" event —
+    // skip the report instead, consistent with how downstream consumers
+    // (ES/CCO/MRO) already treat "no data" as a distinct case from a real
+    // (finite) weak-signal reading.
+    if (!std::isfinite(rsrp) || !std::isfinite(rsrq))
+    {
+        return;
+    }
 
     if (m_active)
     {

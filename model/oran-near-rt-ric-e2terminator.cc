@@ -38,6 +38,7 @@
 #include "oran-near-rt-ric.h"
 #include "oran-report-apploss.h"
 #include "oran-report-location.h"
+#include "oran-report-lte-ue-app-demand.h"
 #include "oran-report-lte-ue-cell-info.h"
 #include "oran-report-lte-ue-rsrp-rsrq.h"
 #include "oran-report-lte-energy-efficiency.h"
@@ -241,6 +242,15 @@ OranNearRtRicE2Terminator::ReceiveReport(Ptr<OranReport> report)
             m_data->SaveLteEnergyRemaining(energyRpt->GetReporterE2NodeId(),
                                            energyRpt->GetTime(),
                                            energyRpt->GetLteEnergyRemaining());
+        }
+        else if (report->GetInstanceTypeId() ==
+                 TypeId::LookupByName("ns3::OranReportLteUeAppDemand"))
+        {
+            Ptr<OranReportLteUeAppDemand> demandRpt =
+                report->GetObject<OranReportLteUeAppDemand>();
+            m_data->SaveLteUeAppDemand(demandRpt->GetReporterE2NodeId(),
+                                       demandRpt->GetTime(),
+                                       demandRpt->GetDemandMbps());
         }
 
         m_nearRtRic->NotifyReportReceived(report);

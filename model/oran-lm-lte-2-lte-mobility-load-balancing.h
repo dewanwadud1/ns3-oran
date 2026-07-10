@@ -22,6 +22,7 @@ class OranLmLte2LteMobilityLoadBalancing : public OranLm
     double m_maxAbsCioDb;
     double m_hotCellTttSec;
     bool m_controlTtt;
+    double m_enbCapacityMbps; //!< Fixed per-eNB capacity ceiling demand is balanced against.
 };
 
 } // namespace ns3

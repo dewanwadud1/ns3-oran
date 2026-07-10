@@ -72,7 +72,14 @@ OranLmLte2LteMobilityLoadBalancing::GetTypeId()
                           "Whether MLB also writes TTT for overloaded cells.",
                           BooleanValue(false),
                           MakeBooleanAccessor(&OranLmLte2LteMobilityLoadBalancing::m_controlTtt),
-                          MakeBooleanChecker());
+                          MakeBooleanChecker())
+            .AddAttribute("EnbCapacityMbps",
+                          "Fixed per-eNB bandwidth capacity that demand is balanced against "
+                          "(uniform across all eNBs). Should match the scenario's "
+                          "--enb-capacity-mbps.",
+                          DoubleValue(50.0),
+                          MakeDoubleAccessor(&OranLmLte2LteMobilityLoadBalancing::m_enbCapacityMbps),
+                          MakeDoubleChecker<double>(0.0));
     return tid;
 }
 
@@ -82,7 +89,8 @@ OranLmLte2LteMobilityLoadBalancing::OranLmLte2LteMobilityLoadBalancing()
       m_cioStepDb(1.0),
       m_maxAbsCioDb(6.0),
       m_hotCellTttSec(0.0),
-      m_controlTtt(false)
+      m_controlTtt(false),
+      m_enbCapacityMbps(50.0)
 {
     m_name = "OranLmLte2LteMobilityLoadBalancing";
 }
@@ -104,7 +112,7 @@ OranLmLte2LteMobilityLoadBalancing::Run()
     Ptr<OranDataRepository> data = m_nearRtRic->Data();
 
     std::map<uint16_t, uint64_t> cellToE2;
-    std::map<uint16_t, uint32_t> ueCountByCell;
+    std::map<uint16_t, double> demandMbpsByCell;
     for (auto enbId : data->GetLteEnbE2NodeIds())
     {
         bool found = false;
@@ -113,52 +121,65 @@ OranLmLte2LteMobilityLoadBalancing::Run()
         if (found)
         {
             cellToE2[cellId] = enbId;
-            ueCountByCell[cellId] = 0;
+            demandMbpsByCell[cellId] = 0.0;
         }
     }
 
+    // Aggregate REAL observed per-UE demand (OranReporterLteUeAppDemand,
+    // fed by actual eMBB/URLLC/mMTC/V2X application traffic) by each UE's
+    // current serving cell -- replaces the previous raw UE-count tally, so
+    // MLB balances actual bandwidth demand, not just how many UEs happen to
+    // be attached.
     for (auto ueId : data->GetLteUeE2NodeIds())
     {
         bool found = false;
         uint16_t cellId = 0;
         uint16_t rnti = 0;
         std::tie(found, cellId, rnti) = data->GetLteUeCellInfo(ueId);
-        if (found && ueCountByCell.find(cellId) != ueCountByCell.end())
+        if (found && demandMbpsByCell.find(cellId) != demandMbpsByCell.end())
         {
-            ueCountByCell[cellId]++;
+            demandMbpsByCell[cellId] += data->GetLteUeAppDemand(ueId);
         }
     }
 
-    if (ueCountByCell.empty())
+    if (demandMbpsByCell.empty())
     {
         return commands;
     }
 
-    uint32_t totalUes = 0;
-    for (const auto& item : ueCountByCell)
+    double totalDemandMbps = 0.0;
+    for (const auto& item : demandMbpsByCell)
     {
-        totalUes += item.second;
+        totalDemandMbps += item.second;
     }
-    const double avgLoad = static_cast<double>(totalUes) / ueCountByCell.size();
-    if (avgLoad <= 0.0)
+    const double avgDemandMbps = totalDemandMbps / demandMbpsByCell.size();
+    if (totalDemandMbps <= 0.0)
     {
         return commands;
     }
 
-    for (const auto& item : ueCountByCell)
+    for (const auto& item : demandMbpsByCell)
     {
         const uint16_t cellId = item.first;
-        const uint32_t load = item.second;
+        const double demandMbps = item.second;
         const uint64_t e2NodeId = cellToE2[cellId];
-        const double normalizedError = (static_cast<double>(load) - avgLoad) / avgLoad;
+        const double utilization = demandMbps / m_enbCapacityMbps;
+        const double normalizedError =
+            (avgDemandMbps > 0.0) ? (demandMbps - avgDemandMbps) / avgDemandMbps : 0.0;
 
-        if (std::abs(normalizedError) < m_loadImbalanceThreshold)
+        // Two independent triggers: relative imbalance (as before, now over
+        // demand instead of UE count) OR a cell literally exceeding its
+        // fixed capacity ceiling -- the latter is an absolute problem worth
+        // shedding load for even if it isn't far from the network average
+        // (e.g. every cell running hot together).
+        const bool overloaded = utilization > 1.0;
+        if (std::abs(normalizedError) < m_loadImbalanceThreshold && !overloaded)
         {
             continue;
         }
 
         OranLteCellControlParams params = GetLteCellControlParameters(e2NodeId);
-        const double direction = normalizedError > 0.0 ? -1.0 : 1.0;
+        const double direction = (normalizedError > 0.0 || overloaded) ? -1.0 : 1.0;
         const double newCio =
             std::max(-m_maxAbsCioDb,
                      std::min(m_maxAbsCioDb, params.cioDb + direction * m_cioStepDb));
@@ -168,7 +189,7 @@ OranLmLte2LteMobilityLoadBalancing::Run()
         data->LogCommandLm(m_name, cioCmd);
         commands.push_back(cioCmd);
 
-        if (m_controlTtt && normalizedError > 0.0)
+        if (m_controlTtt && (normalizedError > 0.0 || overloaded))
         {
             Ptr<OranCommandLte2LteCellParameter> tttCmd =
                 CreateCellParameterCommand(e2NodeId, "TTT", m_hotCellTttSec);
@@ -177,7 +198,8 @@ OranLmLte2LteMobilityLoadBalancing::Run()
         }
 
         std::ostringstream msg;
-        msg << "MLB cellId=" << cellId << " load=" << load << " avgLoad=" << avgLoad
+        msg << "MLB cellId=" << cellId << " demandMbps=" << demandMbps
+            << " avgDemandMbps=" << avgDemandMbps << " utilization=" << utilization
             << " normalizedError=" << normalizedError << " newCio=" << newCio;
         data->LogActionLm(m_name, msg.str());
     }

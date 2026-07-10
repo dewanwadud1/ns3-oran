@@ -127,15 +127,60 @@ OranCmmConflictTriage::~OranCmmConflictTriage()
     NS_LOG_FUNCTION(this);
 }
 
+std::map<std::string, uint32_t>
+OranCmmConflictTriage::GetAndResetIcpCounts(uint64_t e2NodeId)
+{
+    auto it = m_icpCounts.find(e2NodeId);
+    if (it == m_icpCounts.end())
+    {
+        return {};
+    }
+    std::map<std::string, uint32_t> counts = it->second;
+    m_icpCounts.erase(it);
+    return counts;
+}
+
+std::map<std::string, std::set<std::string>>
+OranCmmConflictTriage::GetAndResetIcpActors(uint64_t e2NodeId)
+{
+    auto it = m_icpActors.find(e2NodeId);
+    if (it == m_icpActors.end())
+    {
+        return {};
+    }
+    std::map<std::string, std::set<std::string>> actors = it->second;
+    m_icpActors.erase(it);
+    return actors;
+}
+
+std::vector<OranCmmConflictTriage::ConflictEventRecord>
+OranCmmConflictTriage::GetAndResetConflictEvents(uint64_t e2NodeId)
+{
+    auto it = m_conflictEvents.find(e2NodeId);
+    if (it == m_conflictEvents.end())
+    {
+        return {};
+    }
+    std::vector<ConflictEventRecord> events = it->second;
+    m_conflictEvents.erase(it);
+    return events;
+}
+
 // ── CDC helpers ───────────────────────────────────────────────────────────────
 std::string
 OranCmmConflictTriage::LmToXappRole(const std::string& lmName) const
 {
+    // Each check also matches the ONNX-inference counterpart's class name
+    // (OranLmLte2LteOnnx{EnergySaving,Cco,Mro,Mlb}), which swaps in for the
+    // rule-based LM at the same xApp role without changing role semantics.
     if (lmName.find("EnergySaving")         != std::string::npos) return "ES";
     if (lmName.find("CoverageCapacity")      != std::string::npos) return "CCO";
+    if (lmName.find("OnnxCco")               != std::string::npos) return "CCO";
     if (lmName.find("KpiPrediction")         != std::string::npos) return "CCO";  // proactive ≡ CCO role
     if (lmName.find("RsrpHandover")          != std::string::npos) return "MRO";
+    if (lmName.find("OnnxMro")               != std::string::npos) return "MRO";
     if (lmName.find("MobilityLoadBalancing") != std::string::npos) return "MLB";
+    if (lmName.find("OnnxMlb")               != std::string::npos) return "MLB";
     return "Unknown";
 }
 
@@ -148,6 +193,11 @@ OranCmmConflictTriage::EmitConflictEvent(uint64_t          enbE2Id,
                                           const std::string& winnerRole)
 {
     double now = Simulator::Now().GetSeconds();
+
+    // Record for GetAndResetConflictEvents() -- type is always "Direct" or
+    // "Indirect" here (this taxonomy has no "Implicit" category).
+    m_conflictEvents[enbE2Id].push_back(
+        ConflictEventRecord{icp, type, conflicting, affected, winnerRole});
 
     // ── Build human-readable [CDC] line ──────────────────────────────────────
     std::ostringstream oss;
@@ -205,12 +255,18 @@ OranCmmConflictTriage::LmPriority(const std::string& lmName) const
     // MRO > CCO = KpiPrediction > MLB > ES
     if (lmName.find("RsrpHandover") != std::string::npos)
         return 0; // MRO
+    if (lmName.find("OnnxMro") != std::string::npos)
+        return 0; // MRO (ONNX)
     if (lmName.find("CoverageCapacity") != std::string::npos)
         return 1; // CCO
+    if (lmName.find("OnnxCco") != std::string::npos)
+        return 1; // CCO (ONNX)
     if (lmName.find("KpiPrediction") != std::string::npos)
         return 1; // Proactive predictor — same priority as CCO
     if (lmName.find("MobilityLoadBalancing") != std::string::npos)
         return 2; // MLB
+    if (lmName.find("OnnxMlb") != std::string::npos)
+        return 2; // MLB (ONNX)
     if (lmName.find("EnergySaving") != std::string::npos)
         return 3; // ES
     return 4; // unknown → lowest priority
@@ -384,6 +440,8 @@ OranCmmConflictTriage::Filter(
                           << " delta=" << std::showpos << txp->GetPowerDeltaDb()
                           << std::noshowpos << "\n";
                 txpByNode[e2id].emplace_back(lmName, txp);
+                m_icpCounts[e2id]["TxPower"]++;
+                m_icpActors[e2id]["TxPower"].insert(role);
             }
             else
             {
@@ -399,6 +457,8 @@ OranCmmConflictTriage::Filter(
                               << " value=" << cp->GetValue() << "\n";
                     auto key = std::make_pair(e2id, cp->GetParameterName());
                     cellParamByNodeAndParam[key].emplace_back(lmName, cp);
+                    m_icpCounts[e2id][cp->GetParameterName()]++;
+                    m_icpActors[e2id][cp->GetParameterName()].insert(role);
                 }
                 // All non-TXP commands (handover, cell-parameter, etc.) pass through
                 passThrough.push_back(cmd);

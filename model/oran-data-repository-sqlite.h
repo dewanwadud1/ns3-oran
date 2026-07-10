@@ -117,6 +117,8 @@ class OranDataRepositorySqlite : public OranDataRepository
         uint64_t e2NodeId) override;
     void SaveLteEnergyRemaining(uint64_t e2NodeId, Time t, double remaining) override;
     double GetLteEnergyRemaining(uint64_t e2NodeId) override;
+    void SaveLteUeAppDemand(uint64_t e2NodeId, Time t, double demandMbps) override;
+    double GetLteUeAppDemand(uint64_t e2NodeId) override;
 
     void LogCommandE2Terminator(Ptr<OranCommand> cmd) override;
     void LogCommandLm(std::string lm, Ptr<OranCommand> cmd) override;
@@ -162,7 +164,9 @@ class OranDataRepositorySqlite : public OranDataRepository
         LOG_CMM_ACTION,                    //!< Log a CM module action
         LOG_E2TERMINATOR_COMMAND,          //!< Log an E2 terminator command from the RIC
         LOG_LM_ACTION,                     //!< Log an LM action
-        LOG_LM_COMMAND                     //!< Log an LM command
+        LOG_LM_COMMAND,                    //!< Log an LM command
+        GET_LTE_UE_APP_DEMAND,             //!< Get the last reported UE application demand
+        INSERT_LTE_UE_APP_DEMAND           //!< Add a UE application demand report
     };
 
     /**
@@ -194,7 +198,8 @@ class OranDataRepositorySqlite : public OranDataRepository
         TABLE_NODE_LOCATION,      //!< Table with Node Locations
         TABLE_NODE_REGISTRATION,  //!< Table with Node Registrations
         TABLE_TERMINATOR_COMMAND, //!< Table with logs of E2 Terminator Commands
-        TABLE_APPLOSS_COMMAND     //!< Table with logs of application loss Commands
+        TABLE_APPLOSS_COMMAND,    //!< Table with logs of application loss Commands
+        TABLE_LTE_UE_APP_DEMAND   //!< Table with UE application demand reports
     };
 
     /**

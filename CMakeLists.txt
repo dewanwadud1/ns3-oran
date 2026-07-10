@@ -104,9 +104,17 @@ if(${OnnxRuntime_FOUND})
   set(onnxruntime_libraries ${OnnxRuntime_LIBRARIES})
   set(oran_onnxruntime_sources
       model/oran-lm-lte-2-lte-onnx-handover.cc
+      model/oran-lm-lte-2-lte-onnx-energy-saving.cc
+      model/oran-lm-lte-2-lte-onnx-mro.cc
+      model/oran-lm-lte-2-lte-onnx-mlb.cc
+      model/oran-lm-lte-2-lte-onnx-cco.cc
   )
   set(oran_onnxruntime_headers
       model/oran-lm-lte-2-lte-onnx-handover.h
+      model/oran-lm-lte-2-lte-onnx-energy-saving.h
+      model/oran-lm-lte-2-lte-onnx-mro.h
+      model/oran-lm-lte-2-lte-onnx-mlb.h
+      model/oran-lm-lte-2-lte-onnx-cco.h
   )
 endif()
 
@@ -136,12 +144,14 @@ build_lib(
     model/oran-report.cc
     model/oran-report-apploss.cc
     model/oran-report-lte-ue-rsrp-rsrq.cc
+    model/oran-report-lte-ue-app-demand.cc
     model/oran-report-location.cc
     model/oran-report-lte-ue-cell-info.cc
     model/oran-report-lte-energy-efficiency.cc
     model/oran-reporter.cc
     model/oran-reporter-apploss.cc
     model/oran-reporter-lte-ue-rsrp-rsrq.cc
+    model/oran-reporter-lte-ue-app-demand.cc
     model/oran-reporter-location.cc
     model/oran-reporter-lte-ue-cell-info.cc
     model/oran-reporter-lte-energy-efficiency.cc
@@ -188,12 +198,14 @@ build_lib(
     model/oran-report.h
     model/oran-report-apploss.h
     model/oran-report-lte-ue-rsrp-rsrq.h
+    model/oran-report-lte-ue-app-demand.h
     model/oran-report-location.h
     model/oran-report-lte-ue-cell-info.h
     model/oran-report-lte-energy-efficiency.h
     model/oran-reporter.h
     model/oran-reporter-apploss.h
     model/oran-reporter-lte-ue-rsrp-rsrq.h
+    model/oran-reporter-lte-ue-app-demand.h
     model/oran-reporter-location.h
     model/oran-reporter-lte-ue-cell-info.h
     model/oran-reporter-lte-energy-efficiency.h

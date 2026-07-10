@@ -51,6 +51,48 @@ class OranCmmConflictTriage : public OranCmm
         std::map<std::tuple<std::string, bool>, std::vector<Ptr<OranCommand>>> inputCommands)
         override;
 
+    /**
+     * Returns, and resets to zero, the per-parameter command counts issued
+     * for the given eNB since the last call (or since the start of the
+     * simulation). Keys are ICP names ("TxPower", "CIO", "RET", "TTT", ...).
+     * Intended to be polled once per LM cycle by the scenario driving this
+     * CMM, so its own per-cycle KPI CSV can report real parameter-update
+     * frequencies instead of a placeholder.
+     */
+    std::map<std::string, uint32_t> GetAndResetIcpCounts(uint64_t e2NodeId);
+
+    /**
+     * Returns, and resets, the set of xApp roles that issued a command for
+     * each ICP for the given eNB since the last call -- i.e. "who instructed
+     * this parameter to change" this cycle, keyed by ICP name. A parameter
+     * touched by more than one role this cycle (e.g. TxPower by both ES and
+     * CCO) is exactly the Direct-conflict case; see GetAndResetConflictEvents
+     * for the CDC's own classification of that.
+     */
+    std::map<std::string, std::set<std::string>> GetAndResetIcpActors(uint64_t e2NodeId);
+
+    /**
+     * One CDC-classified conflict event (see EmitConflictEvent) recorded
+     * against a specific eNB. `type` is always "Direct" or "Indirect" --
+     * this scenario's taxonomy deliberately has no "Implicit" category.
+     */
+    struct ConflictEventRecord
+    {
+        std::string icp;
+        std::string type;
+        std::vector<std::string> conflicting;
+        std::vector<std::string> affected;
+        std::string winner;
+    };
+
+    /**
+     * Returns, and resets, every conflict event the CDC classified for the
+     * given eNB since the last call. A cell can have more than one event in
+     * the same cycle (e.g. a Direct TxPower conflict and an Indirect RET
+     * conflict simultaneously), so this is a list, not a single record.
+     */
+    std::vector<ConflictEventRecord> GetAndResetConflictEvents(uint64_t e2NodeId);
+
   private:
     // ── Per-conflict tracking record ────────────────────────────────────────
     struct ConflictRecord
@@ -96,6 +138,15 @@ class OranCmmConflictTriage : public OranCmm
     // ── State ────────────────────────────────────────────────────────────────
     // Key: e2NodeId of the conflicting eNB
     std::map<uint64_t, ConflictRecord> m_txpConflicts;
+
+    // Key: e2NodeId -> (ICP name -> command count since last reset).
+    std::map<uint64_t, std::map<std::string, uint32_t>> m_icpCounts;
+
+    // Key: e2NodeId -> (ICP name -> set of xApp roles that acted on it since last reset).
+    std::map<uint64_t, std::map<std::string, std::set<std::string>>> m_icpActors;
+
+    // Key: e2NodeId -> conflict events classified since last reset.
+    std::map<uint64_t, std::vector<ConflictEventRecord>> m_conflictEvents;
 
     // ── Configuration ────────────────────────────────────────────────────────
     static constexpr double kRsrpQosThresholdDbm = -95.0; //!< Coverage QoS floor (dBm)
