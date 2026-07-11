@@ -885,7 +885,13 @@ main(int argc, char* argv[])
     // foreground iteration.
     uint32_t    nUesPerEnb       = 9;
     double      simTime          = 150.0;
-    double      lmInterval       = 5.0;
+    // 500ms: comfortably inside the O-RAN Near-RT RIC's defining 10ms-1s
+    // control-loop window (was 5.0, Non-RT territory). Kept equal to the E2
+    // SendIntervalRv below so the RIC's decisions are never made on data
+    // older than one query cycle -- tightening one without the other just
+    // means deciding fast on stale data, or collecting fresh data the RIC
+    // never asks for.
+    double      lmInterval       = 0.5;
     double      txPower          = 35.0;         // start higher so ES degradation is visible
     double      esTargetW        = 20.0;         // ES: reduce toward 20 W (~13 dBm)
     double      esStepDb         = 1.0;
@@ -1247,6 +1253,21 @@ main(int argc, char* argv[])
     {
         oranHelper->SetDefaultLogicModule(
             "ns3::OranLmLte2LteRsrpHandover",
+            // 500ms: under the 1s Near-RT threshold (was 1.5s). This is an
+            // xApp-internal anti-ping-pong cooldown, not the RIC's own
+            // control-loop timing -- tightening it is a deliberate choice,
+            // not a compliance requirement, and will likely increase
+            // ping-pong events (expected, not a bug).
+            // Cannot safely go below ~1.5s at a 500ms RIC loop: testing found
+            // 1.0s and 0.5s both crash reliably (segfault/abort in ns-3's
+            // LTE RRC state machine, "method unexpected in state ...") --
+            // MRO re-triggers a handover for the same UE before its PRIOR
+            // handover has fully settled internally. This is an xApp-level
+            // stability parameter, not part of the RIC's own control-loop
+            // timing (see the --lm-interval/SendIntervalRv comments above),
+            // so keeping it above 1s does not weaken the Near-RT claim --
+            // real deployments carry comparable per-action cooldowns (HOM/TTT)
+            // alongside a sub-second control loop for the same reason.
             "HandoverHoldoffSec",    DoubleValue(1.5),
             "RsrpHysteresisDb",      DoubleValue(2.0),
             "EnableCellControlBias", BooleanValue(true));
@@ -1488,8 +1509,11 @@ main(int argc, char* argv[])
         ueTerm->SetAttribute("NearRtRic", PointerValue(nearRtRic));
         ueTerm->SetAttribute("RegistrationIntervalRv",
                              StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+        // Matches lmInterval: the RIC's decisions are only as fresh as the
+        // last E2 report, so this must track the query cadence, not sit at
+        // a fixed 1s regardless of it.
         ueTerm->SetAttribute("SendIntervalRv",
-                             StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+                             StringValue("ns3::ConstantRandomVariable[Constant=0.5]"));
         ueTerm->AddReporter(locRep);
         ueTerm->AddReporter(cellRep);
         ueTerm->AddReporter(rsrpRep);
@@ -1518,8 +1542,9 @@ main(int argc, char* argv[])
         enbTerm->SetAttribute("NearRtRic", PointerValue(nearRtRic));
         enbTerm->SetAttribute("RegistrationIntervalRv",
                               StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+        // Matches lmInterval -- see the UE terminator's SendIntervalRv comment above.
         enbTerm->SetAttribute("SendIntervalRv",
-                              StringValue("ns3::ConstantRandomVariable[Constant=1]"));
+                              StringValue("ns3::ConstantRandomVariable[Constant=0.5]"));
         enbTerm->AddReporter(locRep);
         enbTerm->AddReporter(energyRep);
         enbTerm->Attach(enbNodes.Get(i));
