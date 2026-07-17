@@ -13,6 +13,7 @@ be found here: [https://doi.org/10.1145/3592149.3592157](https://doi.org/10.1145
   * [Optional Dependencies](#optional-dependencies)
 * [Installation](#installation)
   * [Clone (Recommended)](#clone-recommended)
+  * [5G NR Support with 5G-LENA](#5g-nr-support-with-5g-lena)
   * [Download ZIP](#download-zip)
   * [Connecting the Module Quickly](#connecting-the-module-quickly)
     * [Cmake](#cmake-quick-connect)
@@ -75,8 +76,8 @@ imply that the software, materials, or equipment identified are necessarily the 
 This project is considered feature complete, and will be maintained on a 'best effort' basis.
 
 ## Contact
-To report a bug, please open a [GitHub Issue](https://github.com/usnistgov/ns3-oran/issues/new).
-The point of contact for this project is Evan Black ([evan.black@nist.gov](mailto:evan.black@nist.gov))
+To report a bug in this fork, please open a [GitHub Issue](https://github.com/dewanwadud1/ns3-oran/issues/new).
+The point of contact for the original NIST project is Evan Black ([evan.black@nist.gov](mailto:evan.black@nist.gov)).
 
 
 # Model Description
@@ -140,7 +141,7 @@ This release of the `oran` module contains the following features:
 # Installation
 ## Clone (Recommended)
 Clone the project into a directory called `oran` in the `contrib` directory
-of a supported version of `ns-3`.
+of `ns-3.42`.
 
 1) `cd` into the `contrib` directory of `ns-3`
 
@@ -153,10 +154,10 @@ cd contrib/
 ```shell
 # Pick one of the below
 # HTTPS (Choose this one if you're uncertain)
-git clone https://github.com/usnistgov/ns3-oran.git oran
+git clone https://github.com/dewanwadud1/ns3-oran.git oran
 
 # SSH
-git clone git@github.com:usnistgov/ns3-oran.git oran
+git clone git@github.com:dewanwadud1/ns3-oran.git oran
 ```
 
 3) (Re)configure and (Re)build `ns-3`
@@ -168,6 +169,39 @@ git clone git@github.com:usnistgov/ns3-oran.git oran
 ./ns3
 ```
 
+## 5G NR Support with 5G-LENA
+The LTE examples can be built and run with the `oran` module alone. The 5G NR
+examples require the compatible 5G-LENA NR module maintained for this ORAN
+fork:
+
+```text
+https://github.com/dewanwadud1/5g-lena-oran.git
+```
+
+The tested layout is:
+
+```text
+ns-3.42/
+  contrib/
+    oran/
+    nr/
+```
+
+To prepare an ns-3.42 workspace with both modules:
+
+```shell
+cd ns-3.42/contrib
+git clone https://github.com/dewanwadud1/ns3-oran.git oran
+git clone https://github.com/dewanwadud1/5g-lena-oran.git nr
+cd ..
+./ns3 configure --enable-examples
+./ns3
+```
+
+The NR examples in this repository may not work with stock 5G-LENA because
+this fork uses ORAN-compatible additions in the NR module for NR E2
+terminators, reports, handover commands, and related logic.
+
 ## Download ZIP
 If, for whatever reason, `git` is not available, download the
 project and unzip it into the `contrib` directory of `ns-3`.
@@ -177,7 +211,7 @@ Note: Updates will have to be performed manually using this method.
 1) Download the ZIP of the project from the url below
 
 ```shell
-wget https://github.com/usnistgov/ns3-oran/archive/refs/heads/master.zip
+wget https://github.com/dewanwadud1/ns3-oran/archive/refs/heads/master.zip
 ```
 
 2) Unzip the file into the `ns-3` `contrib/` directory
@@ -328,7 +362,7 @@ cd contrib
 rm -Rf oran
 
 # Use this command, or download manually
-wget https://github.com/usnistgov/ns3-oran/archive/refs/heads/master.zip \
+wget https://github.com/dewanwadud1/ns3-oran/archive/refs/heads/master.zip \
   -O ns3-oran-master.zip
 unzip ns3-oran-master.zip
 
@@ -660,6 +694,10 @@ outputs for the Dublin topology.
 ```shell
 ./ns3 run "oran-dublin-es-mro-kpi-example"
 ```
+
+The NR examples below require the compatible `nr` module from
+`https://github.com/dewanwadud1/5g-lena-oran.git` cloned into
+`ns-3.42/contrib/nr`.
 
 ## NR to NR Distance Handover Example
 The NR counterpart of the LTE distance handover example. This scenario
