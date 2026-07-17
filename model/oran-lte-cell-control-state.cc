@@ -1,4 +1,8 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 #include "oran-lte-cell-control-state.h"
 
 #include <algorithm>

@@ -1,4 +1,8 @@
 /*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
+/*
  * File: model/oran-report-lte-energy-efficiency.cc
  * This file has been created by A. Wadud from University College Dublin
  */

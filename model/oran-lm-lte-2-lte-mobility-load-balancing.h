@@ -1,4 +1,8 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 #ifndef ORAN_LM_LTE_2_LTE_MOBILITY_LOAD_BALANCING_H
 #define ORAN_LM_LTE_2_LTE_MOBILITY_LOAD_BALANCING_H
 

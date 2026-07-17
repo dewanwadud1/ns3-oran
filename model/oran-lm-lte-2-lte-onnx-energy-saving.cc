@@ -1,4 +1,8 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 /**
  * DQN Energy-Saving Logic Module, using an ONNX model for inference.
  * See oran-lm-lte-2-lte-onnx-energy-saving.h for the state/action layout,

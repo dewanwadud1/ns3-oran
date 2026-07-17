@@ -1,4 +1,8 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 #include "oran-lm-lte-2-lte-coverage-capacity-optimization.h"
 
 #include "oran-command-lte-2-lte-cell-parameter.h"

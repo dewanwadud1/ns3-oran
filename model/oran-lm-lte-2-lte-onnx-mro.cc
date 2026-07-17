@@ -1,4 +1,8 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 /**
  * DQN Mobility Robustness Optimisation (handover) Logic Module, using ONNX
  * models for inference. See oran-lm-lte-2-lte-onnx-mro.h for the pipeline,

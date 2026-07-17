@@ -88,7 +88,9 @@ class OranNearRtRic : public Object
     {
         WIRED = 0, //!< Wired node, identified by simulation Node ID
         LTEUE,     //!< LTE UE, identified by IMSI
-        LTEENB     //!< LTE ENB, identified by cell ID
+        LTEENB,    //!< LTE ENB, identified by cell ID
+        NRUE,      //!< NR UE, identified by IMSI
+        NRGNB      //!< NR gNB, identified by cell ID
     };
 
     /**

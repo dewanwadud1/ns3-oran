@@ -38,6 +38,28 @@ be found here: [https://doi.org/10.1145/3592149.3592157](https://doi.org/10.1145
   * [Multiple Network Devices Example](#multiple-network-devices-example)
   * [LTE to LTE ML Handover Example](#lte-to-lte-ml-handover-example)
   * [LTE to LTE RSRP Handover LM Example](#lte-to-lte-rsrp-handover-lm-example)
+  * [LTE to LTE Energy Saving Example](#lte-to-lte-energy-saving-example)
+  * [LTE to LTE ES-MRO Conflict Mitigation Example](#lte-to-lte-es-mro-conflict-mitigation-example)
+  * [LTE to LTE Mobility Load Balancing Example](#lte-to-lte-mobility-load-balancing-example)
+  * [LTE to LTE Coverage Capacity Optimization Example](#lte-to-lte-coverage-capacity-optimization-example)
+  * [LTE to LTE Four xApp Conflict Example](#lte-to-lte-four-xapp-conflict-example)
+  * [LTE to LTE Proactive Conflict Example](#lte-to-lte-proactive-conflict-example)
+  * [LTE to LTE Dublin Four xApp Example](#lte-to-lte-dublin-four-xapp-example)
+  * [Dublin LTE ES-MRO KPI Example](#dublin-lte-es-mro-kpi-example)
+  * [NR to NR Distance Handover Example](#nr-to-nr-distance-handover-example)
+  * [NR to NR Distance Handover With Helper Example](#nr-to-nr-distance-handover-with-helper-example)
+  * [NR to NR Distance Handover With LM Processing Delay Example](#nr-to-nr-distance-handover-with-lm-processing-delay-example)
+  * [NR to NR Distance Handover With LM Query Trigger Example](#nr-to-nr-distance-handover-with-lm-query-trigger-example)
+  * [NR to NR RSRP Handover Example](#nr-to-nr-rsrp-handover-example)
+  * [NR to NR Energy Saving Example](#nr-to-nr-energy-saving-example)
+  * [NR to NR Multiple Network Devices Example](#nr-to-nr-multiple-network-devices-example)
+  * [NR to NR Mobility Load Balancing Example](#nr-to-nr-mobility-load-balancing-example)
+  * [NR to NR Coverage Capacity Optimization Example](#nr-to-nr-coverage-capacity-optimization-example)
+  * [NR to NR ES-MRO Conflict Mitigation Example](#nr-to-nr-es-mro-conflict-mitigation-example)
+  * [NR to NR Four xApp Conflict Example](#nr-to-nr-four-xapp-conflict-example)
+  * [NR to NR Proactive Conflict Example](#nr-to-nr-proactive-conflict-example)
+  * [NR to NR Dublin Four xApp Example](#nr-to-nr-dublin-four-xapp-example)
+  * [Dublin NR ES-MRO KPI Example](#dublin-nr-es-mro-kpi-example)
 
 # Project Overview
 This project has been developed by the National Institute of Standards and Technology (NIST)
@@ -572,4 +594,193 @@ measurements that are reported by the UE to trigger handovers.
 
 ```shell
 ./ns3 run "oran-lte-2-lte-rsrp-handover-lm-example"
+```
+
+## LTE to LTE Energy Saving Example
+In this scenario the Near-RT RIC is configured with an energy-saving Logic
+Module that adjusts eNB transmission power and reports the resulting energy
+consumption.
+
+```shell
+./ns3 run "oran-lte-2-lte-energy-saving-example"
+```
+
+## LTE to LTE ES-MRO Conflict Mitigation Example
+This example combines energy-saving and mobility-robustness objectives and
+uses a conflict mitigation module to coordinate the resulting commands.
+
+```shell
+./ns3 run "oran-lte-2-lte-es-mro-conflict-mitigation-example"
+```
+
+## LTE to LTE Mobility Load Balancing Example
+In this scenario the Near-RT RIC uses a mobility load balancing Logic Module
+to adjust LTE cell individual offsets and influence handover behavior.
+
+```shell
+./ns3 run "oran-lte-2-lte-mlb-example"
+```
+
+## LTE to LTE Coverage Capacity Optimization Example
+In this scenario the Near-RT RIC uses a coverage capacity optimization Logic
+Module to adjust LTE transmission power.
+
+```shell
+./ns3 run "oran-lte-2-lte-cco-example"
+```
+
+## LTE to LTE Four xApp Conflict Example
+This example runs multiple LTE xApps together so their handover, power, and
+cell-parameter commands can be observed under a shared Near-RT RIC.
+
+```shell
+./ns3 run "oran-lte-2-lte-four-xapp-conflict-example"
+```
+
+## LTE to LTE Proactive Conflict Example
+This example demonstrates a proactive LTE conflict-management workflow that
+tracks RSRP-violation cycles and network KPIs while xApp commands are issued.
+
+```shell
+./ns3 run "oran-lte-2-lte-proactive-conflict-example"
+```
+
+## LTE to LTE Dublin Four xApp Example
+This larger LTE scenario applies the four-xApp conflict setup to a Dublin
+topology. It is more computationally intensive than the small examples above.
+
+```shell
+./ns3 run "oran-lte-2-lte-dublin-four-xapp-example"
+```
+
+## Dublin LTE ES-MRO KPI Example
+This larger LTE scenario evaluates ES-MRO conflict mitigation and records KPI
+outputs for the Dublin topology.
+
+```shell
+./ns3 run "oran-dublin-es-mro-kpi-example"
+```
+
+## NR to NR Distance Handover Example
+The NR counterpart of the LTE distance handover example. This scenario
+manually configures the Near-RT RIC, NR UE and gNB E2 terminators, and an
+NR-to-NR distance handover Logic Module.
+
+```shell
+./ns3 run "oran-nr-2-nr-distance-handover-example"
+```
+
+## NR to NR Distance Handover With Helper Example
+Functionally the same scenario as the
+[NR to NR Distance Handover Example](#nr-to-nr-distance-handover-example),
+however, in this scenario the helper is used to configure and deploy the
+models.
+
+```shell
+./ns3 run "oran-nr-2-nr-distance-handover-helper-example"
+```
+
+## NR to NR Distance Handover With LM Processing Delay Example
+Similar to the
+[NR to NR Distance Handover With Helper Example](#nr-to-nr-distance-handover-with-helper-example),
+however, in this scenario the Logic Module is configured with a processing
+delay.
+
+```shell
+./ns3 run "oran-nr-2-nr-distance-handover-lm-processing-delay-example"
+```
+
+## NR to NR Distance Handover With LM Query Trigger Example
+Similar to the
+[NR to NR Distance Handover With Helper Example](#nr-to-nr-distance-handover-with-helper-example)
+example, however, in this scenario the Near-RT RIC is configured with a
+custom Query Trigger that may initiate the Logic Module querying process as
+soon as Reports with certain characteristics are received by the Near-RT RIC.
+
+```shell
+./ns3 run "oran-nr-2-nr-distance-handover-lm-query-trigger-example"
+```
+
+## NR to NR RSRP Handover Example
+In this scenario the Near-RT RIC is configured with an NR Logic Module that
+uses RSRP measurements reported by the UE to trigger NR-to-NR handovers.
+
+```shell
+./ns3 run "oran-nr-2-nr-rsrp-handover-example"
+```
+
+## NR to NR Energy Saving Example
+In this scenario the Near-RT RIC is configured with an NR energy-saving Logic
+Module that adjusts gNB transmission power and reports the resulting energy
+consumption.
+
+```shell
+./ns3 run "oran-nr-2-nr-energy-saving-example"
+```
+
+## NR to NR Multiple Network Devices Example
+This example is the NR counterpart of the
+[Multiple Network Devices Example](#multiple-network-devices-example). NR UE
+nodes are represented as separate UE nodes with one NR net device each, so the
+Near-RT RIC can still interact with multiple NR UE E2 terminators.
+
+```shell
+./ns3 run "oran-nr-2-nr-multiple-net-devices-example"
+```
+
+## NR to NR Mobility Load Balancing Example
+In this scenario the Near-RT RIC uses an NR mobility load balancing Logic
+Module to adjust gNB cell individual offsets and influence handover behavior.
+
+```shell
+./ns3 run "oran-nr-2-nr-mlb-example"
+```
+
+## NR to NR Coverage Capacity Optimization Example
+In this scenario the Near-RT RIC uses an NR coverage capacity optimization
+Logic Module to adjust gNB transmission power.
+
+```shell
+./ns3 run "oran-nr-2-nr-cco-example"
+```
+
+## NR to NR ES-MRO Conflict Mitigation Example
+This NR example combines energy-saving and mobility-robustness objectives and
+uses a conflict mitigation module to coordinate the resulting gNB and handover
+commands.
+
+```shell
+./ns3 run "oran-nr-2-nr-es-mro-conflict-mitigation-example"
+```
+
+## NR to NR Four xApp Conflict Example
+This example runs multiple NR xApps together so their handover, power, and
+cell-parameter commands can be observed under a shared Near-RT RIC.
+
+```shell
+./ns3 run "oran-nr-2-nr-four-xapp-conflict-example"
+```
+
+## NR to NR Proactive Conflict Example
+This example demonstrates a proactive NR conflict-management workflow that
+tracks RSRP-violation cycles and network KPIs while xApp commands are issued.
+
+```shell
+./ns3 run "oran-nr-2-nr-proactive-conflict-example"
+```
+
+## NR to NR Dublin Four xApp Example
+This larger NR scenario applies the four-xApp conflict setup to a Dublin
+topology. It is more computationally intensive than the small examples above.
+
+```shell
+./ns3 run "oran-nr-2-nr-dublin-four-xapp-example"
+```
+
+## Dublin NR ES-MRO KPI Example
+This larger NR scenario evaluates ES-MRO conflict mitigation and records KPI
+outputs for the Dublin topology.
+
+```shell
+./ns3 run "oran-nr-dublin-es-mro-kpi-example"
 ```

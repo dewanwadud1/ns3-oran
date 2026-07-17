@@ -1,3 +1,7 @@
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 #include "oran-command-lte-2-lte-tx-power.h"
 #include <ns3/log.h>
 

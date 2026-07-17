@@ -1,4 +1,8 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 #ifndef ORAN_CMM_LTE_2_LTE_ES_MRO_H
 #define ORAN_CMM_LTE_2_LTE_ES_MRO_H
 

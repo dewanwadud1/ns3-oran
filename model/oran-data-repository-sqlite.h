@@ -88,10 +88,13 @@ class OranDataRepositorySqlite : public OranDataRepository
 
     uint64_t RegisterNode(OranNearRtRic::NodeType type, uint64_t id) override;
     uint64_t RegisterNodeLteUe(uint64_t id, uint64_t imsi) override;
+    uint64_t RegisterNodeNrUe(uint64_t id, uint64_t imsi) override;
     uint64_t RegisterNodeLteEnb(uint64_t id, uint16_t cellId) override;
+    uint64_t RegisterNodeNrGnb(uint64_t id, uint16_t cellId) override;
     uint64_t DeregisterNode(uint64_t e2NodeId) override;
     void SavePosition(uint64_t e2NodeId, Vector pos, Time t) override;
     void SaveLteUeCellInfo(uint64_t e2NodeId, uint16_t cellId, uint16_t rnti, Time t) override;
+    void SaveNrUeCellInfo(uint64_t e2NodeId, uint16_t cellId, uint16_t rnti, Time t) override;
     void SaveAppLoss(uint64_t e2NodeId, double appLoss, Time t) override;
     void SaveLteUeRsrpRsrq(uint64_t e2NodeId,
                            Time t,
@@ -101,24 +104,43 @@ class OranDataRepositorySqlite : public OranDataRepository
                            double rsrq,
                            bool isServingCell,
                            uint8_t componentCarrierId) override;
+    void SaveNrUeRsrpRsrq(uint64_t e2NodeId,
+                          Time t,
+                          uint16_t rnti,
+                          uint16_t cellId,
+                          double rsrp,
+                          double rsrq,
+                          bool isServingCell,
+                          uint8_t componentCarrierId) override;
 
     std::map<Time, Vector> GetNodePositions(uint64_t e2NodeId,
                                             Time fromTime,
                                             Time toTime,
                                             uint64_t maxEntries = 1) override;
     std::tuple<bool, uint16_t, uint16_t> GetLteUeCellInfo(uint64_t e2NodeId) override;
+    std::tuple<bool, uint16_t, uint16_t> GetNrUeCellInfo(uint64_t e2NodeId) override;
     std::vector<uint64_t> GetLteUeE2NodeIds() override;
+    std::vector<uint64_t> GetNrUeE2NodeIds() override;
     uint64_t GetLteUeE2NodeIdFromCellInfo(uint16_t cellId, uint16_t rnti) override;
+    uint64_t GetNrUeE2NodeIdFromCellInfo(uint16_t cellId, uint16_t rnti) override;
     std::tuple<bool, uint16_t> GetLteEnbCellInfo(uint64_t e2NodeId) override;
+    std::tuple<bool, uint16_t> GetNrGnbCellInfo(uint64_t e2NodeId) override;
     std::vector<uint64_t> GetLteEnbE2NodeIds() override;
+    std::vector<uint64_t> GetNrGnbE2NodeIds() override;
     std::vector<std::tuple<uint64_t, Time>> GetLastRegistrationRequests() override;
     double GetAppLoss(uint64_t e2NodeId) override;
     std::vector<std::tuple<uint16_t, uint16_t, double, double, bool, uint8_t>> GetLteUeRsrpRsrq(
         uint64_t e2NodeId) override;
+    std::vector<std::tuple<uint16_t, uint16_t, double, double, bool, uint8_t>> GetNrUeRsrpRsrq(
+        uint64_t e2NodeId) override;
     void SaveLteEnergyRemaining(uint64_t e2NodeId, Time t, double remaining) override;
     double GetLteEnergyRemaining(uint64_t e2NodeId) override;
+    void SaveNrEnergyRemaining(uint64_t e2NodeId, Time t, double remaining) override;
+    double GetNrEnergyRemaining(uint64_t e2NodeId) override;
     void SaveLteUeAppDemand(uint64_t e2NodeId, Time t, double demandMbps) override;
     double GetLteUeAppDemand(uint64_t e2NodeId) override;
+    void SaveNrUeAppDemand(uint64_t e2NodeId, Time t, double demandMbps) override;
+    double GetNrUeAppDemand(uint64_t e2NodeId) override;
 
     void LogCommandE2Terminator(Ptr<OranCommand> cmd) override;
     void LogCommandLm(std::string lm, Ptr<OranCommand> cmd) override;
@@ -166,7 +188,21 @@ class OranDataRepositorySqlite : public OranDataRepository
         LOG_LM_ACTION,                     //!< Log an LM action
         LOG_LM_COMMAND,                    //!< Log an LM command
         GET_LTE_UE_APP_DEMAND,             //!< Get the last reported UE application demand
-        INSERT_LTE_UE_APP_DEMAND           //!< Add a UE application demand report
+        INSERT_LTE_UE_APP_DEMAND,          //!< Add a UE application demand report
+        GET_NR_ALL_GNB_E2NODEIDS,          //!< Get all NR gNB E2 IDs
+        GET_NR_ALL_UE_E2NODEIDS,           //!< Get all NR UE E2 IDs
+        GET_NR_CELLID_FROM_E2NODEID,       //!< Get the cell ID of an NR gNB from its E2 Node ID
+        GET_NR_UE_CELLINFO,                //!< Get the cell information associated with NR UE
+        GET_NR_UE_E2NODEID_FROM_CELLINFO,  //!< Get the E2 ID of a UE from the cell information
+        GET_NR_UE_RSRP_RSRQ,               //!< Get the UE RSRP and RSRQ measurements
+        GET_NR_ENERGY_REMAINING,           //!< Get the latest remaining energy for a gNB
+        INSERT_NR_GNB_NODE,                //!< Add an NR gNB E2 node
+        INSERT_NR_UE_CELL,                 //!< Add NR UE cell information for an E2 node
+        INSERT_NR_UE_NODE,                 //!< Add an NR UE E2 node
+        INSERT_NR_UE_RSRP_RSRQ,            //!< Add NR UE RSRP and RSRQ
+        INSERT_NR_ENERGY_REMAINING,        //!< Add remaining energy for a gNB
+        GET_NR_UE_APP_DEMAND,              //!< Get the last reported UE application demand
+        INSERT_NR_UE_APP_DEMAND            //!< Add a UE application demand report
     };
 
     /**
@@ -199,7 +235,21 @@ class OranDataRepositorySqlite : public OranDataRepository
         TABLE_NODE_REGISTRATION,  //!< Table with Node Registrations
         TABLE_TERMINATOR_COMMAND, //!< Table with logs of E2 Terminator Commands
         TABLE_APPLOSS_COMMAND,    //!< Table with logs of application loss Commands
-        TABLE_LTE_UE_APP_DEMAND   //!< Table with UE application demand reports
+        TABLE_LTE_UE_APP_DEMAND,  //!< Table with UE application demand reports
+        INDEX_NR_GNB_CELLID,      //!< Index for the table with NR gNB based on Cell IDs
+        INDEX_NR_GNB_NODEID,      //!< Index for the table with NR gNB based on E2 Node IDs
+        INDEX_NR_UE_CELL_CELLID,  //!< Index for the table with NR UE Cell Information based on
+                                  //!< Cell IDs
+        INDEX_NR_UE_CELL_NODEID,  //!< Index for the table with NR UE Cell Information based on E2
+                                  //!< Node IDs
+        INDEX_NR_UE_IMSI,         //!< Index for the table with NR UE based on IMSI
+        INDEX_NR_UE_NODEID,       //!< Index for the table with NR UE based on E2 Node ID
+        TABLE_NR_GNB,             //!< Table with NR gNB information
+        TABLE_NR_UE,              //!< Table with NR UE information
+        TABLE_NR_UE_CELL,         //!< Table with NR UE Cell Information
+        TABLE_NR_UE_RSRP_RSRQ,    //!< Table with NR UE RSRP and RSRQ Information
+        TABLE_NR_ENERGY_REMAINING,//!< Table with gNB remaining energy
+        TABLE_NR_UE_APP_DEMAND    //!< Table with NR UE application demand reports
     };
 
     /**

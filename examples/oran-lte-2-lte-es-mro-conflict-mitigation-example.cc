@@ -1,3 +1,7 @@
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 /**
  * ES/MRO conflict mitigation example for ns-3.42 O-RAN.
  *

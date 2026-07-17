@@ -1,3 +1,7 @@
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 /**
  * Proactive Conflict Management Example for ns-3.42 O-RAN (Chapter 6, TNSM).
  *

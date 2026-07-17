@@ -1,3 +1,7 @@
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 #ifndef ORAN_COMMAND_LTE_2_LTE_TX_POWER_H
 #define ORAN_COMMAND_LTE_2_LTE_TX_POWER_H
 

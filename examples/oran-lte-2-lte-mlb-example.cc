@@ -1,3 +1,7 @@
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 /**
  * Mobility Load Balancing (MLB) xApp example for ns-3.42 O-RAN.
  *

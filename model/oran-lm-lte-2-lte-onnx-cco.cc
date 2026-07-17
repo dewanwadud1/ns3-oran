@@ -1,4 +1,8 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 /**
  * DQN Coverage & Capacity Optimization Logic Module, using an ONNX model
  * for inference. See oran-lm-lte-2-lte-onnx-cco.h for the state/action

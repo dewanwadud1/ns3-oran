@@ -1,4 +1,8 @@
 /* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 #ifndef ORAN_LTE_CELL_CONTROL_STATE_H
 #define ORAN_LTE_CELL_CONTROL_STATE_H
 

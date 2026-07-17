@@ -1,3 +1,7 @@
+/*
+ * Author: Abdul Wadud
+ * Affiliation: University College Dublin, Ireland.
+ */
 /**
  * Four-xApp Conflict Scenario for ns-3.42 O-RAN.
  *

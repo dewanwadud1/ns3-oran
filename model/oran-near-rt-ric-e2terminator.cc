@@ -34,6 +34,8 @@
 #include "oran-data-repository.h"
 #include "oran-e2-node-terminator-lte-enb.h"
 #include "oran-e2-node-terminator-lte-ue.h"
+#include "oran-e2-node-terminator-nr-gnb.h"
+#include "oran-e2-node-terminator-nr-ue.h"
 #include "oran-e2-node-terminator.h"
 #include "oran-near-rt-ric.h"
 #include "oran-report-apploss.h"
@@ -42,6 +44,10 @@
 #include "oran-report-lte-ue-cell-info.h"
 #include "oran-report-lte-ue-rsrp-rsrq.h"
 #include "oran-report-lte-energy-efficiency.h"
+#include "oran-report-nr-ue-app-demand.h"
+#include "oran-report-nr-ue-cell-info.h"
+#include "oran-report-nr-ue-rsrp-rsrq.h"
+#include "oran-report-nr-energy-efficiency.h"
 #include "oran-report.h"
 
 #include "ns3/abort.h"
@@ -50,6 +56,10 @@
 #include "ns3/lte-enb-rrc.h"
 #include "ns3/lte-ue-net-device.h"
 #include "ns3/lte-ue-rrc.h"
+#include "ns3/nr-gnb-net-device.h"
+#include "ns3/nr-gnb-rrc.h"
+#include "ns3/nr-ue-net-device.h"
+#include "ns3/nr-ue-rrc.h"
 #include "ns3/pointer.h"
 #include "ns3/simulator.h"
 #include "ns3/string.h"
@@ -153,6 +163,18 @@ OranNearRtRicE2Terminator::ReceiveRegistrationRequest(OranNearRtRic::NodeType ty
                 id,
                 terminator->GetObject<OranE2NodeTerminatorLteEnb>()->GetNetDevice()->GetCellId());
             break;
+        case OranNearRtRic::NodeType::NRUE:
+            e2NodeId = m_data->RegisterNodeNrUe(id,
+                                                terminator->GetObject<OranE2NodeTerminatorNrUe>()
+                                                    ->GetNetDevice()
+                                                    ->GetRrc()
+                                                    ->GetImsi());
+            break;
+        case OranNearRtRic::NodeType::NRGNB:
+            e2NodeId = m_data->RegisterNodeNrGnb(
+                id,
+                terminator->GetObject<OranE2NodeTerminatorNrGnb>()->GetNetDevice()->GetCellId());
+            break;
         default:
             e2NodeId = m_data->RegisterNode(type, id);
             break;
@@ -251,6 +273,47 @@ OranNearRtRicE2Terminator::ReceiveReport(Ptr<OranReport> report)
             m_data->SaveLteUeAppDemand(demandRpt->GetReporterE2NodeId(),
                                        demandRpt->GetTime(),
                                        demandRpt->GetDemandMbps());
+        }
+        else if (report->GetInstanceTypeId() ==
+                 TypeId::LookupByName("ns3::OranReportNrUeCellInfo"))
+        {
+            Ptr<OranReportNrUeCellInfo> nrUeCellInfoRpt =
+                report->GetObject<OranReportNrUeCellInfo>();
+            m_data->SaveNrUeCellInfo(nrUeCellInfoRpt->GetReporterE2NodeId(),
+                                     nrUeCellInfoRpt->GetCellId(),
+                                     nrUeCellInfoRpt->GetRnti(),
+                                     nrUeCellInfoRpt->GetTime());
+        }
+        else if (report->GetInstanceTypeId() ==
+                 TypeId::LookupByName("ns3::OranReportNrUeRsrpRsrq"))
+        {
+            Ptr<OranReportNrUeRsrpRsrq> nrRsrpRsrqRpt = report->GetObject<OranReportNrUeRsrpRsrq>();
+            m_data->SaveNrUeRsrpRsrq(nrRsrpRsrqRpt->GetReporterE2NodeId(),
+                                     nrRsrpRsrqRpt->GetTime(),
+                                     nrRsrpRsrqRpt->GetRnti(),
+                                     nrRsrpRsrqRpt->GetCellId(),
+                                     nrRsrpRsrqRpt->GetRsrp(),
+                                     nrRsrpRsrqRpt->GetRsrq(),
+                                     nrRsrpRsrqRpt->GetIsServingCell(),
+                                     nrRsrpRsrqRpt->GetComponentCarrierId());
+        }
+        else if (report->GetInstanceTypeId() ==
+                 TypeId::LookupByName("ns3::OranReportNrEnergyEfficiency"))
+        {
+            Ptr<OranReportNrEnergyEfficiency> nrEnergyRpt =
+                report->GetObject<OranReportNrEnergyEfficiency>();
+            m_data->SaveNrEnergyRemaining(nrEnergyRpt->GetReporterE2NodeId(),
+                                          nrEnergyRpt->GetTime(),
+                                          nrEnergyRpt->GetNrEnergyRemaining());
+        }
+        else if (report->GetInstanceTypeId() ==
+                 TypeId::LookupByName("ns3::OranReportNrUeAppDemand"))
+        {
+            Ptr<OranReportNrUeAppDemand> nrDemandRpt =
+                report->GetObject<OranReportNrUeAppDemand>();
+            m_data->SaveNrUeAppDemand(nrDemandRpt->GetReporterE2NodeId(),
+                                      nrDemandRpt->GetTime(),
+                                      nrDemandRpt->GetDemandMbps());
         }
 
         m_nearRtRic->NotifyReportReceived(report);

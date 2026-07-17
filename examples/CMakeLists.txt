@@ -205,3 +205,187 @@ build_lib_example(
     ${libmobility}
     ${libenergy}
 )
+
+build_lib_example(
+  NAME oran-nr-2-nr-rsrp-handover-example
+  SOURCE_FILES oran-nr-2-nr-rsrp-handover-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libinternet}
+    ${libpoint-to-point}
+    ${libapplications}
+)
+
+build_lib_example(
+  NAME oran-nr-2-nr-energy-saving-example
+  SOURCE_FILES oran-nr-2-nr-energy-saving-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libenergy}
+    ${libinternet}
+    ${libpoint-to-point}
+    ${libapplications}
+)
+
+build_lib_example(
+  NAME oran-nr-2-nr-distance-handover-example
+  SOURCE_FILES oran-nr-2-nr-distance-handover-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libinternet}
+    ${libpoint-to-point}
+)
+
+build_lib_example(
+  NAME oran-nr-2-nr-distance-handover-helper-example
+  SOURCE_FILES oran-nr-2-nr-distance-handover-helper-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libinternet}
+    ${libpoint-to-point}
+)
+
+build_lib_example(
+  NAME oran-nr-2-nr-distance-handover-lm-processing-delay-example
+  SOURCE_FILES oran-nr-2-nr-distance-handover-lm-processing-delay-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libinternet}
+    ${libpoint-to-point}
+)
+
+build_lib_example(
+  NAME oran-nr-2-nr-distance-handover-lm-query-trigger-example
+  SOURCE_FILES oran-nr-2-nr-distance-handover-lm-query-trigger-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libinternet}
+    ${libpoint-to-point}
+)
+
+build_lib_example(
+  NAME oran-nr-2-nr-multiple-net-devices-example
+  SOURCE_FILES oran-nr-2-nr-multiple-net-devices-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libinternet}
+    ${libpoint-to-point}
+    ${libapplications}
+)
+
+build_lib_example(
+  NAME oran-nr-2-nr-mlb-example
+  SOURCE_FILES oran-nr-2-nr-mlb-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libinternet}
+    ${libpoint-to-point}
+    ${libapplications}
+)
+
+build_lib_example(
+  NAME oran-nr-2-nr-cco-example
+  SOURCE_FILES oran-nr-2-nr-cco-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libinternet}
+    ${libpoint-to-point}
+    ${libapplications}
+)
+
+build_lib_example(
+  NAME oran-nr-2-nr-es-mro-conflict-mitigation-example
+  SOURCE_FILES oran-nr-2-nr-es-mro-conflict-mitigation-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libenergy}
+    ${libinternet}
+    ${libpoint-to-point}
+    ${libapplications}
+)
+
+build_lib_example(
+  NAME oran-nr-2-nr-four-xapp-conflict-example
+  SOURCE_FILES oran-nr-2-nr-four-xapp-conflict-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libenergy}
+    ${libinternet}
+    ${libpoint-to-point}
+    ${libapplications}
+)
+
+build_lib_example(
+  NAME oran-nr-2-nr-proactive-conflict-example
+  SOURCE_FILES oran-nr-2-nr-proactive-conflict-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libenergy}
+    ${libinternet}
+    ${libpoint-to-point}
+    ${libapplications}
+)
+
+build_lib_example(
+  NAME oran-nr-dublin-es-mro-kpi-example
+  SOURCE_FILES oran-nr-dublin-es-mro-kpi-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libenergy}
+    ${libinternet}
+    ${libpoint-to-point}
+    ${libapplications}
+)
+
+build_lib_example(
+  NAME oran-nr-2-nr-dublin-four-xapp-example
+  SOURCE_FILES oran-nr-2-nr-dublin-four-xapp-example.cc
+  LIBRARIES_TO_LINK
+    ${liboran}
+    ${libnetwork}
+    ${libnr}
+    ${libmobility}
+    ${libenergy}
+    ${libinternet}
+    ${libpoint-to-point}
+    ${libapplications}
+)
